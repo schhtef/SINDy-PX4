@@ -250,6 +250,7 @@ public:
 
 	Autopilot_Interface();
 	Autopilot_Interface(Generic_Port *port_);
+	//Destructor, can be called explicitly, or gets invoked automatically when the class goes out of scope
 	~Autopilot_Interface();
 
 	char reading_status;

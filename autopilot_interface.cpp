@@ -186,6 +186,7 @@ set_yaw_rate(float yaw_rate, mavlink_set_position_target_local_ned_t &sp)
 // ------------------------------------------------------------------------------
 //   Con/De structors
 // ------------------------------------------------------------------------------
+// Scope resolution operators are used to define function contents outside of class declaration 
 Autopilot_Interface::
 Autopilot_Interface(Generic_Port *port_)
 {
