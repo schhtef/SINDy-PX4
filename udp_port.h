@@ -96,6 +96,8 @@
  * a byte stream buffer.  MAVlink is not used in this object yet, it's just
  * a serialization interface.  To help with read and write pthreading, it
  * gaurds any port operation with a pthread mutex.
+ * 
+ * UDP_Port inherits all the members of Generic_Port and makes them public
  */
 class UDP_Port: public Generic_Port
 {
