@@ -199,15 +199,20 @@ commands(Autopilot_Interface &api, bool autotakeoff)
 	printf("    pos  (NED):  %f %f %f (m)\n", pos.x, pos.y, pos.z );
 
 	// hires imu
-	mavlink_highres_imu_t imu = messages.highres_imu;
-	printf("Got message HIGHRES_IMU (spec: https://mavlink.io/en/messages/common.html#HIGHRES_IMU)\n");
-	printf("    ap time:     %lu \n", imu.time_usec);
-	printf("    acc  (NED):  % f % f % f (m/s^2)\n", imu.xacc , imu.yacc , imu.zacc );
-	printf("    gyro (NED):  % f % f % f (rad/s)\n", imu.xgyro, imu.ygyro, imu.zgyro);
-	printf("    mag  (NED):  % f % f % f (Ga)\n"   , imu.xmag , imu.ymag , imu.zmag );
-	printf("    baro:        %f (mBar) \n"  , imu.abs_pressure);
-	printf("    altitude:    %f (m) \n"     , imu.pressure_alt);
-	printf("    temperature: %f C \n"       , imu.temperature );
+    while(1)
+    {
+        messages = api.current_messages;
+        mavlink_highres_imu_t imu = messages.highres_imu;
+        printf("Got message HIGHRES_IMU (spec: https://mavlink.io/en/messages/common.html#HIGHRES_IMU)\n");
+        printf("    ap time:     %lu \n", imu.time_usec);
+        printf("    acc  (NED):  % f % f % f (m/s^2)\n", imu.xacc , imu.yacc , imu.zacc );
+        printf("    gyro (NED):  % f % f % f (rad/s)\n", imu.xgyro, imu.ygyro, imu.zgyro);
+        printf("    mag  (NED):  % f % f % f (Ga)\n"   , imu.xmag , imu.ymag , imu.zmag );
+        printf("    baro:        %f (mBar) \n"  , imu.abs_pressure);
+        printf("    altitude:    %f (m) \n"     , imu.pressure_alt);
+        printf("    temperature: %f C \n"       , imu.temperature );
+        usleep(1000000);
+    }
 
 	printf("\n");
 
