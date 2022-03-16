@@ -1,7 +1,7 @@
 all: git_submodule SID_control
 
-SID_control: SID_control.cpp serial_port.cpp udp_port.cpp autopilot_interface.cpp
-	g++ -g -Wall -I c_library_v2/ SID_control.cpp serial_port.cpp udp_port.cpp autopilot_interface.cpp -o SID_control -lpthread
+SID_control: src/SID_control.cpp src/serial_port.cpp src/udp_port.cpp src/autopilot_interface.cpp
+	g++ -g -Wall -I src/c_library_v2/ src/SID_control.cpp src/serial_port.cpp src/udp_port.cpp src/autopilot_interface.cpp -o build/SID_control -lpthread
 
 git_submodule:
 	git submodule update --init --recursive

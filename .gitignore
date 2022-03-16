@@ -33,3 +33,6 @@
 
 # vscode Config
 .vscode/
+
+# Executables
+build/
