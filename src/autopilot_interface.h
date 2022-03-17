@@ -64,7 +64,7 @@
 #include <unistd.h>  // UNIX standard function definitions
 #include <mutex>
 
-#include <common/mavlink.h>
+#include <c_library_v2/common/mavlink.h>
 
 // ------------------------------------------------------------------------------
 //   Defines

@@ -14,7 +14,7 @@ using std::string;
 using namespace std;
 
 #include "autopilot_interface.h"
-#include <common/mavlink.h>
+#include <c_library_v2/common/mavlink.h>
 #include "udp_port.h"
 #include "serial_port.h"
 

@@ -73,7 +73,7 @@
 #include <arpa/inet.h>
 #include <stdbool.h>
 
-#include <common/mavlink.h>
+#include <c_library_v2/common/mavlink.h>
 
 #include "generic_port.h"
 
@@ -95,7 +95,7 @@
  * UDP port over which we'll communicate.  It also has methods to write
  * a byte stream buffer.  MAVlink is not used in this object yet, it's just
  * a serialization interface.  To help with read and write pthreading, it
- * gaurds any port operation with a pthread mutex.
+ * guards any port operation with a pthread mutex.
  * 
  * UDP_Port inherits all the members of Generic_Port and makes them public
  */
