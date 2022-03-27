@@ -39,7 +39,7 @@
  *
  * @brief Autopilot interface functions
  *
- * Functions for sending and recieving commands to an autopilot via MAVlink
+ * Functions for sending and receiving commands to an autopilot via MAVlink
  *
  * @author Trent Lukaczyk, <aerialhedgehog@gmail.com>
  * @author Jaycee Lock,    <jaycee.lock@gmail.com>
