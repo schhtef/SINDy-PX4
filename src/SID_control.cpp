@@ -79,10 +79,15 @@ top (int argc, char **argv)
 	char *udp_ip = (char*)"127.0.0.1";
 	int udp_port = 14540;
 	bool autotakeoff = false;
+	string filename = "/home/stefan/Documents/PX4-SID/tests/log.txt";
 
 	// do the parse, will throw an int if it fails
-	parse_commandline(argc, argv, uart_name, baudrate, use_udp, udp_ip, udp_port, autotakeoff);
+	parse_commandline(argc, argv, uart_name, baudrate, use_udp, udp_ip, udp_port, autotakeoff, filename);
 
+	// create fstream object, should be opened automatically by the constructor
+	ofstream logfile (filename);
+	//logfile.open();
+	
 
 	// --------------------------------------------------------------------------
 	//   PORT and THREAD STARTUP
@@ -127,6 +132,14 @@ top (int argc, char **argv)
 	Autopilot_Interface autopilot_interface(port);
 
 	/*
+	*Instantiate a data logger object
+	*
+	* Starts a thread to write mavlink messages to a logfile specified in the command
+	* line arguments.
+	*/
+	Logger logger(&logfile, &autopilot_interface.current_messages);
+
+	/*
 	 * Setup interrupt signal handler
 	 *
 	 * Responds to early exits signaled with Ctrl-C.  The handler will command
@@ -136,14 +149,16 @@ top (int argc, char **argv)
 	 */
 	port_quit         = port;
 	autopilot_interface_quit = &autopilot_interface;
+	logger_quit = &logger;
 	signal(SIGINT,quit_handler);
 
 	/*
-	 * Start the port and autopilot_interface
+	 * Start the port, autopilot_interface, and logger
 	 * This is where the port is opened, and read and write threads are started.
 	 */
 	port->start();
 	autopilot_interface.start();
+	logger.start();
 
 
 	// --------------------------------------------------------------------------
@@ -165,6 +180,7 @@ top (int argc, char **argv)
 	 */
 	autopilot_interface.stop();
 	port->stop();
+	logger.stop();
 
 	delete port;
 
@@ -185,7 +201,7 @@ top (int argc, char **argv)
 void
 commands(Autopilot_Interface &api, bool autotakeoff)
 {
-	
+
 	// --------------------------------------------------------------------------
 	//   GET A MESSAGE
 	// --------------------------------------------------------------------------
@@ -198,7 +214,7 @@ commands(Autopilot_Interface &api, bool autotakeoff)
 	mavlink_local_position_ned_t pos = messages.local_position_ned;
 	printf("Got message LOCAL_POSITION_NED (spec: https://mavlink.io/en/messages/common.html#LOCAL_POSITION_NED)\n");
 	printf("    pos  (NED):  %f %f %f (m)\n", pos.x, pos.y, pos.z );
-
+	/*
 	// hires imu
     while(1)
     {
@@ -214,7 +230,11 @@ commands(Autopilot_Interface &api, bool autotakeoff)
         printf("    temperature: %f C \n"       , imu.temperature );
         usleep(1000000);
     }
+	*/
+	while(1)
+	{
 
+	}
 	printf("\n");
 
 
@@ -233,15 +253,16 @@ commands(Autopilot_Interface &api, bool autotakeoff)
 // throws EXIT_FAILURE if could not open the port
 void
 parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate,
-		bool &use_udp, char *&udp_ip, int &udp_port, bool &autotakeoff)
+		bool &use_udp, char *&udp_ip, int &udp_port, bool &autotakeoff, string &filename)
 {
 
 	// string for command line usage
 	const char *commandline_usage = "usage: mavlink_control [-d <devicename> -b <baudrate>] [-u <udp_ip> -p <udp_port>] [-a ]";
-
+		char *val;
 	// Read input arguments
 	for (int i = 1; i < argc; i++) { // argv[0] is "mavlink"
-
+		val = argv[i];
+		printf("%s\n",val);
 		// Help
 		if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
 			printf("%s\n",commandline_usage);
@@ -281,7 +302,7 @@ parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate,
 				throw EXIT_FAILURE;
 			}
 		}
-
+		
 		// UDP port
 		if (strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--port") == 0) {
 			if (argc > i + 1) {
@@ -296,6 +317,17 @@ parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate,
 		// Autotakeoff
 		if (strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--autotakeoff") == 0) {
 			autotakeoff = true;
+		}
+
+		// logfile
+		if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--log") == 0) {
+			if (argc > i + 1) {
+				i++;
+				filename = (argv[i]);
+			} else {
+				printf("%s\n",commandline_usage);
+				throw EXIT_FAILURE;
+			}
 		}
 
 	}
@@ -326,6 +358,12 @@ quit_handler( int sig )
 	// port
 	try {
 		port_quit->stop();
+	}
+	catch (int error){}
+
+	// logger
+	try {
+		logger_quit->handle_quit(sig);
 	}
 	catch (int error){}
 

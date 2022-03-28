@@ -822,6 +822,7 @@ read_thread()
 	while ( ! time_to_exit )
 	{
 		read_messages();
+		// TODO: make read rate configurable at runtime
 		usleep(100000); // Read batches at 10Hz
 	}
 
