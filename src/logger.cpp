@@ -65,6 +65,7 @@ write_thread()
 		mavlink_highres_imu_t imu = messages->highres_imu;
 		//printf("    acc  (NED):  % f % f % f (m/s^2)\n", imu.xacc , imu.yacc , imu.zacc );
 		*file << imu.xacc << endl;
+		//mavlink_messages contains timestamp for IMU as well
 		//*file << printf();
         //write messages to file at writingRate
         usleep(250000); //4hz
