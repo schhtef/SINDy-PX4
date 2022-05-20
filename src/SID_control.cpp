@@ -47,7 +47,11 @@
  *
  */
 
+// ------------------------------------------------------------------------------
+//   Defines
+// ------------------------------------------------------------------------------
 
+#define BUFFER_LENGTH 1000
 
 // ------------------------------------------------------------------------------
 //   Includes
@@ -99,7 +103,7 @@ top (int argc, char **argv)
 	 * This object handles the opening and closing of the offboard computer's
 	 * port over which it will communicate to an autopilot.  It has
 	 * methods to read and write a mavlink_message_t object.  To help with read
-	 * and write in the context of pthreading, it gaurds port operations with a
+	 * and write in the context of pthreading, it guards port operations with a
 	 * pthread mutex lock. It can be a serial or an UDP port.
 	 *
 	 */
@@ -113,6 +117,18 @@ top (int argc, char **argv)
 		port = new Serial_Port(uart_name, baudrate);
 	}
 
+	/*
+	 * Instantiate a buffer object
+	 *
+	 * This object handles the synchronization between the producer (autopilot interface)
+	 * and consumer (SINDy). It creates a buffer for the desired data of length BUFFER_LENGTH.
+	 * The buffer implements mutexing and condition variables which allows the separate
+	 * Producer and Consumer threads to access it without data races.
+	 *
+	 */
+	Buffer input_buffer(BUFFER_LENGTH);
+
+	
 
 	/*
 	 * Instantiate an autopilot interface object
@@ -127,9 +143,13 @@ top (int argc, char **argv)
 	 * method.  Signal the exit of this mode with disable_offboard_control().  It's
 	 * important that one way or another this program signals offboard mode exit,
 	 * otherwise the vehicle will go into failsafe.
+	 * 
+	 * The input buffer pointer is passed into its constructor so it can write to the buffer
 	 *
 	 */
-	Autopilot_Interface autopilot_interface(port);
+
+	
+	Autopilot_Interface autopilot_interface(port, &input_buffer);
 
 	/*
 	*Instantiate a data logger object
@@ -233,7 +253,11 @@ commands(Autopilot_Interface &api, bool autotakeoff)
 	*/
 	while(1)
 	{
-
+		//poll the autopilot interface for having full buffers
+		//if it's full, mutex the flag
+		//call buffer.clear to return then empty buffer
+		//clear flag
+		//release mutex
 	}
 	printf("\n");
 
