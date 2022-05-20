@@ -31,12 +31,19 @@ class SID
 private:
     Buffer *input_buffer;
     pair <mavlink_highres_imu_t, uint64_t> *data;
+    bool time_to_exit;
+    pthread_t compute_tid = 0;
 public:
     SID(Buffer *input_buffer_);
     ~SID();
 
-    void compute();
+    void compute_thread();
     void interpolate();
+    void start();
+    void stop();
+    void handle_quit(int sig);
+
+    bool compute_status;
 };
 
 #endif

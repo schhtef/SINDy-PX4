@@ -15,7 +15,6 @@
 // ------------------------------------------------------------------------------
 //   Includes
 // ------------------------------------------------------------------------------
-#include "autopilot_interface.h"
 #include "c_library_v2/common/mavlink.h"
 #include <utility>
 #include <mutex>

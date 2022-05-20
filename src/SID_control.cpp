@@ -128,7 +128,13 @@ top (int argc, char **argv)
 	 */
 	Buffer input_buffer(BUFFER_LENGTH);
 
-	
+	/*
+	 * Instantiate a system identification object
+	 *
+	 * This object takes data from the input buffer and implements the SINDy algorithm on it
+	 *
+	 */
+	SID SINDy(&input_buffer);
 
 	/*
 	 * Instantiate an autopilot interface object
@@ -147,8 +153,6 @@ top (int argc, char **argv)
 	 * The input buffer pointer is passed into its constructor so it can write to the buffer
 	 *
 	 */
-
-	
 	Autopilot_Interface autopilot_interface(port, &input_buffer);
 
 	/*
@@ -178,6 +182,7 @@ top (int argc, char **argv)
 	 */
 	port->start();
 	autopilot_interface.start();
+	SINDy.start();
 	logger.start();
 
 

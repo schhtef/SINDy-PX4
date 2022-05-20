@@ -15,6 +15,8 @@
 
 #include "SID.h"
 
+void* start_SID_compute_thread(void *args);
+
 // ------------------------------------------------------------------------------
 //   Con/De structors
 // ------------------------------------------------------------------------------
@@ -32,13 +34,80 @@ SID::
 }
 
 void SID::
-compute()
+compute_thread()
 {
-    while(1)
-    {
-        //copy input buffer into data array, will block until buffer is full
+    compute_status = true;
+
+    while ( ! time_to_exit )
+	{
         input_buffer->clear(data);
-        printf("Final Element = %.4f \n", data[input_buffer->buffer_length - 1].first);
-        printf("Final timestamp = %d \n", data[input_buffer->buffer_length - 1].second);
-    }
+        mavlink_highres_imu_t imu = data[input_buffer->buffer_length - 1].first;
+        printf("Final acc  (NED):  % f % f % f (m/s^2)\n", imu.xacc , imu.yacc , imu.zacc );
+        printf("Final timestamp = %ld \n", data[input_buffer->buffer_length - 1].second);
+	}
+
+	compute_status = false;
+
+	return;
+}
+
+void SID::
+start()
+{
+	printf("START SINDy COMPUTE THREAD \n");
+	int result = pthread_create( &compute_tid, NULL, &start_SID_compute_thread, this);
+	if ( result ) throw result;
+}
+
+void SID::
+stop()
+{
+	// --------------------------------------------------------------------------
+	//   CLOSE THREADS
+	// --------------------------------------------------------------------------
+	printf("STOP SINDy THREAD\n");
+
+	// signal exit
+	time_to_exit = true;
+
+	// wait for exit
+	pthread_join(compute_tid ,NULL);
+
+	// now the read and write threads are closed
+	printf("\n");
+
+	// still need to close the port separately
+}
+
+// ------------------------------------------------------------------------------
+//   Quit Handler
+// ------------------------------------------------------------------------------
+void
+SID::
+handle_quit( int sig )
+{
+	try {
+		stop();
+	}
+	catch (int error) {
+		fprintf(stderr,"Warning, could not stop SINDy\n");
+	}
+
+}
+
+// ------------------------------------------------------------------------------
+//  Pthread Starter Helper Functions
+// ------------------------------------------------------------------------------
+
+void*
+start_SID_compute_thread(void *args)
+{
+	// takes a SID object
+	SID *SINDy = (SID *)args;
+
+	// run the object's read thread
+	SINDy->compute_thread();
+
+	// done!
+	return NULL;
 }

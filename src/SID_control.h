@@ -14,12 +14,13 @@
 using std::string;
 using namespace std;
 
+#include "buffer.h"
 #include "autopilot_interface.h"
 #include "c_library_v2/common/mavlink.h"
 #include "udp_port.h"
 #include "serial_port.h"
 #include "logger.h"
-#include "buffer.h"
+#include "SID.h"
 
 int main(int argc, char **argv);
 int top(int argc, char **argv);

@@ -286,7 +286,6 @@ public:
 
 
 private:
-
 	Generic_Port *port;
 
 	bool time_to_exit;
