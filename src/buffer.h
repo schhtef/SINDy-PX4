@@ -12,12 +12,14 @@
 #ifndef BUFFER_H_
 #define BUFFER_H_
 
-//This module should allow me to write telemetry to a type of log file and storage medium/location chosen at runtime.
 // ------------------------------------------------------------------------------
 //   Includes
 // ------------------------------------------------------------------------------
 #include "autopilot_interface.h"
 #include "c_library_v2/common/mavlink.h"
+#include <utility>
+#include <mutex>
+#include <condition_variable>
 
 using namespace std;
 
@@ -30,28 +32,38 @@ void* start_buffer_read_thread(void *args); //pthread helper function
 //   Buffer Class
 // ----------------------------------------------------------------------------------
 /*
- * Buffer Class
+ * Generic Buffer Class so that buffers of multiple mavlink datatypes can be used
  *
  */
 class Buffer
 {
+    const int buffer_width = 2;
+    pair <mavlink_highres_imu_t, uint64_t>* buffer;
+
+    int buffer_counter = 0;
+
+    std::mutex mtx;
+    std::condition_variable full;
+    std::condition_variable not_full;
 
 public:
-    // Pass mavlink messages object so we can read from it
-    Buffer(Mavlink_Messages *messages_);
+    Buffer();
+    Buffer(int buffer_length_);
     ~Buffer();
 
     int start();
     void stop();
     void handle_quit( int sig );
     int read_thread();
+    
+    void insert(pair <mavlink_highres_imu_t, uint64_t>);
+    pair <mavlink_highres_imu_t, uint64_t>* clear(pair <mavlink_highres_imu_t, uint64_t>* data);
+
+    int buffer_length;
 
     bool time_to_exit;
-	pthread_t write_tid;
-
-    int readingRate;
-private:
-    Mavlink_Messages *messages;
+	//pthread_t write_tid;
+    
 };
 
-#endif  //LOGGER_H_
+#endif  //Buffer_H_

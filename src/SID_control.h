@@ -19,6 +19,7 @@ using namespace std;
 #include "udp_port.h"
 #include "serial_port.h"
 #include "logger.h"
+#include "buffer.h"
 
 int main(int argc, char **argv);
 int top(int argc, char **argv);

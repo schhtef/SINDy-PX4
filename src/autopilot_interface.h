@@ -56,6 +56,7 @@
 // ------------------------------------------------------------------------------
 
 #include "generic_port.h"
+#include "buffer.h"
 
 #include <signal.h>
 #include <time.h>
@@ -249,7 +250,7 @@ class Autopilot_Interface
 public:
 
 	Autopilot_Interface();
-	Autopilot_Interface(Generic_Port *port_);
+	Autopilot_Interface(Generic_Port *port_,Buffer *input_buffer_);
 	//Destructor, can be called explicitly, or gets invoked automatically when the class goes out of scope
 	~Autopilot_Interface();
 
@@ -264,6 +265,8 @@ public:
 
 	Mavlink_Messages current_messages;
 	mavlink_set_position_target_local_ned_t initial_position;
+
+	Buffer *input_buffer;
 
 	void update_setpoint(mavlink_set_position_target_local_ned_t setpoint);
 	void read_messages();
