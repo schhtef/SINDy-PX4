@@ -36,7 +36,6 @@ void* start_buffer_read_thread(void *args); //pthread helper function
  */
 class Buffer
 {
-    const int buffer_width = 2;
     pair <mavlink_highres_imu_t, uint64_t>* buffer;
 
     int buffer_counter = 0;
