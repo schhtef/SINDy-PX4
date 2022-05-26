@@ -37,13 +37,19 @@ void SID::
 compute_thread()
 {
     compute_status = true;
+	plog::init(plog::debug, "demo.csv", 5000, 3); // Initialize logging to the file.
 
     while ( ! time_to_exit )
 	{
         input_buffer->clear(data);
+		for(int i = 0; i < input_buffer->buffer_length, i++;)
+		{
+			PLOGD << "Test\n";
+			//PLOGD << data[i].second;
+		}
         mavlink_highres_imu_t imu = data[input_buffer->buffer_length - 1].first;
-        printf("Final acc  (NED):  % f % f % f (m/s^2)\n", imu.xacc , imu.yacc , imu.zacc );
-        printf("Final timestamp = %ld \n", data[input_buffer->buffer_length - 1].second);
+        //printf("Final acc  (NED):  % f % f % f (m/s^2)\n", imu.xacc , imu.yacc , imu.zacc );
+        //printf("Final timestamp = %ld \n", data[input_buffer->buffer_length - 1].second);
 	}
 
 	compute_status = false;

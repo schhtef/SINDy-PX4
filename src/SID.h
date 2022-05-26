@@ -18,6 +18,8 @@
 #include "autopilot_interface.h"
 #include "c_library_v2/common/mavlink.h"
 #include "buffer.h"
+#include "plog/Log.h"
+#include "plog/Initializers/RollingFileInitializer.h"
 #include <map>
 
 using namespace std;

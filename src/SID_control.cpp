@@ -87,11 +87,9 @@ top (int argc, char **argv)
 
 	// do the parse, will throw an int if it fails
 	parse_commandline(argc, argv, uart_name, baudrate, use_udp, udp_ip, udp_port, autotakeoff, filename, buffer_length);
-
-	// create fstream object, should be opened automatically by the constructor
-	ofstream logfile (filename);
-	//logfile.open();
 	
+	// Initialize Plogger
+    plog::init(plog::debug, "tests/demo.csv", 5000, 3); // Initialize logging to the file.
 
 	// --------------------------------------------------------------------------
 	//   PORT and THREAD STARTUP
@@ -156,14 +154,6 @@ top (int argc, char **argv)
 	Autopilot_Interface autopilot_interface(port, &input_buffer);
 
 	/*
-	*Instantiate a data logger object
-	*
-	* Starts a thread to write mavlink messages to a logfile specified in the command
-	* line arguments.
-	*/
-	Logger logger(&logfile, &autopilot_interface.current_messages);
-
-	/*
 	 * Setup interrupt signal handler
 	 *
 	 * Responds to early exits signaled with Ctrl-C.  The handler will command
@@ -173,7 +163,7 @@ top (int argc, char **argv)
 	 */
 	port_quit         = port;
 	autopilot_interface_quit = &autopilot_interface;
-	logger_quit = &logger;
+	SINDy_quit = &SINDy;
 	signal(SIGINT,quit_handler);
 
 	/*
@@ -183,7 +173,6 @@ top (int argc, char **argv)
 	port->start();
 	autopilot_interface.start();
 	SINDy.start();
-	logger.start();
 
 
 	// --------------------------------------------------------------------------
@@ -205,7 +194,6 @@ top (int argc, char **argv)
 	 */
 	autopilot_interface.stop();
 	port->stop();
-	logger.stop();
 
 	delete port;
 
@@ -401,12 +389,11 @@ quit_handler( int sig )
 	}
 	catch (int error){}
 
-	// logger
+	// SID
 	try {
-		logger_quit->handle_quit(sig);
+		SINDy_quit->stop();
 	}
 	catch (int error){}
-
 	// end program here
 	exit(0);
 
