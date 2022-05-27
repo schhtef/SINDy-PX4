@@ -29,14 +29,12 @@ Buffer(int buffer_length_)
 {
 	//initialize first row of the buffer
 	buffer_length = buffer_length_;
-	buffer = new pair <mavlink_highres_imu_t, uint64_t> [buffer_length];
 }
 
 Buffer::
 ~Buffer()
 {
-	//make sure buffer memory is deallocated on destruction
-	delete buffer;
+
 }
 
 void Buffer::insert(pair <mavlink_highres_imu_t, uint64_t> element)
@@ -53,8 +51,8 @@ void Buffer::insert(pair <mavlink_highres_imu_t, uint64_t> element)
 		return buffer_counter != buffer_length; 
 	});
 
-	//insert linear and angular rates into the buffer
-	buffer[buffer_counter] = element;
+	//insert element into buffer
+	buffer.push_back(element);
 
 	//increment buffer counter
 	buffer_counter++;
@@ -65,12 +63,13 @@ void Buffer::insert(pair <mavlink_highres_imu_t, uint64_t> element)
 	if(buffer_counter == buffer_length)
 	{
 		//notify blocked thread that buffer is full
+		printf("Buffer is full!\n");
 		full.notify_one();
 	}
 
 }
 
-pair <mavlink_highres_imu_t, uint64_t>* Buffer::clear(pair <mavlink_highres_imu_t, uint64_t>* data)
+std::vector<pair <mavlink_highres_imu_t, uint64_t>> Buffer::clear()
 {
 	// This block of code is locked to the calling thread
 	// ie. the buffer is emptied without having any data added
@@ -84,10 +83,13 @@ pair <mavlink_highres_imu_t, uint64_t>* Buffer::clear(pair <mavlink_highres_imu_
         return buffer_counter != buffer_length;
     });
     
-    //copy buffer to pointer passed into function
-	pair <mavlink_highres_imu_t, uint64_t> *result = buffer;
+    //copy buffer contents to new vector
+	std::vector<pair <mavlink_highres_imu_t, uint64_t>> data (buffer);
 
 	//empty buffer
+	buffer.clear();
+	printf("Buffer has been emptied!\n");
+
 	buffer_counter = 0;
 
     // Unlock unique lock
@@ -96,7 +98,8 @@ pair <mavlink_highres_imu_t, uint64_t>* Buffer::clear(pair <mavlink_highres_imu_
     // Notify a single thread that the buffer isn't full
     not_full.notify_one();
 
-	return result;
+	// Return copy of buffer
+	return data;
 }
 
 int Buffer::

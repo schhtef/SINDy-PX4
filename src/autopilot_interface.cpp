@@ -241,6 +241,7 @@ read_messages()
 	bool success;               // receive success flag
 	bool received_all = false;  // receive only one message
 	Time_Stamps this_timestamps;
+	pair <mavlink_highres_imu_t, uint64_t> element;
 
 	// Blocking wait for new data
 	while ( !received_all and !time_to_exit )
@@ -344,7 +345,9 @@ read_messages()
 					mavlink_msg_highres_imu_decode(&message, &(current_messages.highres_imu));
 					current_messages.time_stamps.highres_imu = get_time_usec();
 					this_timestamps.highres_imu = current_messages.time_stamps.highres_imu;
-
+					element.first = current_messages.highres_imu;
+					element.second = this_timestamps.highres_imu;
+					input_buffer->insert(element);
 					break;
 				}
 

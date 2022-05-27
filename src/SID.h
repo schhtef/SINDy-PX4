@@ -32,7 +32,7 @@ class SID
 {
 private:
     Buffer *input_buffer;
-    pair <mavlink_highres_imu_t, uint64_t> *data;
+    std::vector <pair <mavlink_highres_imu_t, uint64_t>> data;
     bool time_to_exit;
     pthread_t compute_tid = 0;
 public:

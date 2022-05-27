@@ -24,32 +24,35 @@ SID::
 SID(Buffer *input_buffer_)
 {
     input_buffer = input_buffer_;
-    data = new pair <mavlink_highres_imu_t, uint64_t> [input_buffer->buffer_length];
 }
 
 SID::
 ~SID()
 {
-    delete data;
 }
 
 void SID::
 compute_thread()
 {
     compute_status = true;
-	plog::init(plog::debug, "demo.csv", 5000, 3); // Initialize logging to the file.
+	//plog::init(plog::debug, "demo.csv"); // Initialize logging to the file.
+	vector <pair <mavlink_highres_imu_t, uint64_t>>::iterator it; // Declare iterator for moving through vector
+	mavlink_highres_imu_t imu;
+	uint64_t timestamp;
 
     while ( ! time_to_exit )
 	{
-        input_buffer->clear(data);
-		for(int i = 0; i < input_buffer->buffer_length, i++;)
+        data = input_buffer->clear();
+		/*
+		for(it = data.begin(); it != data.end(); it++)
 		{
-			PLOGD << "Test\n";
-			//PLOGD << data[i].second;
+			imu = (*it).first;
+			timestamp = (*it).second;
+			//printf("Acc  (NED):  % f % f % f (m/s^2) Timestamp: %i", imu.xacc , imu.yacc , imu.zacc, timestamp);
 		}
-        mavlink_highres_imu_t imu = data[input_buffer->buffer_length - 1].first;
-        //printf("Final acc  (NED):  % f % f % f (m/s^2)\n", imu.xacc , imu.yacc , imu.zacc );
-        //printf("Final timestamp = %ld \n", data[input_buffer->buffer_length - 1].second);
+		*/
+		printf("Sindy is thinking...\n");
+		usleep(5000000);
 	}
 
 	compute_status = false;

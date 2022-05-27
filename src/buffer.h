@@ -19,6 +19,8 @@
 #include <utility>
 #include <mutex>
 #include <condition_variable>
+#include <vector>       // std::vector
+#include <algorithm>    // std::copy
 
 using namespace std;
 
@@ -36,8 +38,8 @@ void* start_buffer_read_thread(void *args); //pthread helper function
  */
 class Buffer
 {
-    pair <mavlink_highres_imu_t, uint64_t>* buffer;
-
+    int buffer_length;
+    std::vector<pair <mavlink_highres_imu_t, uint64_t>> buffer;
     int buffer_counter = 0;
 
     std::mutex mtx;
@@ -54,10 +56,10 @@ public:
     void handle_quit( int sig );
     int read_thread();
     
-    void insert(pair <mavlink_highres_imu_t, uint64_t>);
-    pair <mavlink_highres_imu_t, uint64_t>* clear(pair <mavlink_highres_imu_t, uint64_t>* data);
+    void insert(pair <mavlink_highres_imu_t, uint64_t> element);
+    std::vector<pair <mavlink_highres_imu_t, uint64_t>> clear();
 
-    int buffer_length;
+
 
     bool time_to_exit;
 	//pthread_t write_tid;

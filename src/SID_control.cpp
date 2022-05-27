@@ -83,14 +83,11 @@ top (int argc, char **argv)
 	int udp_port = 14540;
 	bool autotakeoff = false;
 	string filename = "/home/stefan/Documents/PX4-SID/tests/log.txt";
-	int buffer_length = 10;
+	int buffer_length = 10000;
 
 	// do the parse, will throw an int if it fails
 	parse_commandline(argc, argv, uart_name, baudrate, use_udp, udp_ip, udp_port, autotakeoff, filename, buffer_length);
 	
-	// Initialize Plogger
-    plog::init(plog::debug, "tests/demo.csv", 5000, 3); // Initialize logging to the file.
-
 	// --------------------------------------------------------------------------
 	//   PORT and THREAD STARTUP
 	// --------------------------------------------------------------------------
@@ -347,7 +344,7 @@ parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate,
 			}
 		}
 
-		// logfile
+		// buffer
 		if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--buffer") == 0) {
 			if (argc > i + 1) {
 				i++;
