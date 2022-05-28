@@ -53,6 +53,7 @@ compute_thread()
 		*/
 		printf("Sindy is thinking...\n");
 		usleep(5000000);
+		printf("Sindy is done...\n");
 	}
 
 	compute_status = false;

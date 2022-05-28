@@ -57,15 +57,16 @@ void Buffer::insert(pair <mavlink_highres_imu_t, uint64_t> element)
 	//increment buffer counter
 	buffer_counter++;
 
-	//unlock mutex
-	unique_lock.unlock();
-
 	if(buffer_counter == buffer_length)
 	{
 		//notify blocked thread that buffer is full
 		printf("Buffer is full!\n");
 		full.notify_one();
 	}
+	//unlock mutex
+	unique_lock.unlock();
+
+
 
 }
 
@@ -78,25 +79,25 @@ std::vector<pair <mavlink_highres_imu_t, uint64_t>> Buffer::clear()
     std::unique_lock<std::mutex> unique_lock(mtx);
     
     // Wait if buffer is not full
+	// Will wait as long as predicate is false
 	// buffer will not notify consumer until it has filled up
-    full.wait(unique_lock, [this]() {
-        return buffer_counter != buffer_length;
-    });
+    full.wait(unique_lock, [this]{return buffer_counter == buffer_length;});
     
     //copy buffer contents to new vector
 	std::vector<pair <mavlink_highres_imu_t, uint64_t>> data (buffer);
-
+	printf("Buffer has been emptied!\n");
+	printf("Buffer Counter: %d\n", buffer_counter);
+	
 	//empty buffer
 	buffer.clear();
-	printf("Buffer has been emptied!\n");
-
 	buffer_counter = 0;
+
+    // Notify a single thread that the buffer isn't full
+	not_full.notify_one();
 
     // Unlock unique lock
     unique_lock.unlock();
     
-    // Notify a single thread that the buffer isn't full
-    not_full.notify_one();
 
 	// Return copy of buffer
 	return data;

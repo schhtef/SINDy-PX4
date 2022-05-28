@@ -83,10 +83,10 @@ top (int argc, char **argv)
 	int udp_port = 14540;
 	bool autotakeoff = false;
 	string filename = "/home/stefan/Documents/PX4-SID/tests/log.txt";
-	int buffer_length = 10000;
+	int buffer_length = 100;
 
 	// do the parse, will throw an int if it fails
-	parse_commandline(argc, argv, uart_name, baudrate, use_udp, udp_ip, udp_port, autotakeoff, filename, buffer_length);
+	parse_commandline(argc, argv, uart_name, baudrate, use_udp, udp_ip, udp_port, autotakeoff, filename, &buffer_length);
 	
 	// --------------------------------------------------------------------------
 	//   PORT and THREAD STARTUP
@@ -267,7 +267,7 @@ commands(Autopilot_Interface &api, bool autotakeoff)
 // throws EXIT_FAILURE if could not open the port
 void
 parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate,
-		bool &use_udp, char *&udp_ip, int &udp_port, bool &autotakeoff, string &filename, int buffer_length)
+		bool &use_udp, char *&udp_ip, int &udp_port, bool &autotakeoff, string &filename, int *buffer_length)
 {
 
 	// string for command line usage
@@ -348,7 +348,7 @@ parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate,
 		if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--buffer") == 0) {
 			if (argc > i + 1) {
 				i++;
-				buffer_length = atoi(argv[i]);
+				*buffer_length = atoi(argv[i]);
 			} else {
 				printf("%s\n",commandline_usage);
 				throw EXIT_FAILURE;
