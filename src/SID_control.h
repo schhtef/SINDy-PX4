@@ -10,6 +10,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <string.h>
+#include <array>
 
 using std::string;
 using namespace std;

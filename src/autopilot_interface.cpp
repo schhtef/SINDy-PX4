@@ -241,7 +241,6 @@ read_messages()
 	bool success;               // receive success flag
 	bool received_all = false;  // receive only one message
 	Time_Stamps this_timestamps;
-	pair <mavlink_highres_imu_t, uint64_t> element;
 
 	// Blocking wait for new data
 	while ( !received_all and !time_to_exit )
@@ -309,6 +308,7 @@ read_messages()
 					mavlink_msg_local_position_ned_decode(&message, &(current_messages.local_position_ned));
 					current_messages.time_stamps.local_position_ned = get_time_usec();
 					this_timestamps.local_position_ned = current_messages.time_stamps.local_position_ned;
+					input_buffer->insert(message);
 					break;
 				}
 
@@ -345,9 +345,7 @@ read_messages()
 					mavlink_msg_highres_imu_decode(&message, &(current_messages.highres_imu));
 					current_messages.time_stamps.highres_imu = get_time_usec();
 					this_timestamps.highres_imu = current_messages.time_stamps.highres_imu;
-					element.first = current_messages.highres_imu;
-					element.second = this_timestamps.highres_imu;
-					input_buffer->insert(element);
+					input_buffer->insert(message);
 					break;
 				}
 
@@ -357,7 +355,26 @@ read_messages()
 					mavlink_msg_attitude_decode(&message, &(current_messages.attitude));
 					current_messages.time_stamps.attitude = get_time_usec();
 					this_timestamps.attitude = current_messages.time_stamps.attitude;
-					//insert sample into buffer
+					input_buffer->insert(message);
+					break;
+				}
+
+				case MAVLINK_MSG_ID_MESSAGE_INTERVAL:
+				{
+					//printf("MAVLINK_MSG_ID_ATTITUDE\n");
+					mavlink_msg_message_interval_decode(&message, &(current_messages.message_interval));
+					current_messages.time_stamps.message_interval = get_time_usec();
+					this_timestamps.message_interval = current_messages.time_stamps.message_interval;
+					break;
+				}
+
+				case MAVLINK_MSG_ID_ACTUATOR_OUTPUT_STATUS:
+				{
+					//printf("MAVLINK_MSG_ID_ATTITUDE\n");
+					mavlink_msg_actuator_output_status_decode(&message, &(current_messages.actuator_status));
+					current_messages.time_stamps.actuator_output_status = get_time_usec();
+					this_timestamps.actuator_output_status = current_messages.time_stamps.actuator_output_status;
+					input_buffer->insert(message);
 					break;
 				}
 

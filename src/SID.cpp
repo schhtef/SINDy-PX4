@@ -35,27 +35,14 @@ void SID::
 compute_thread()
 {
     compute_status = true;
-	//plog::init(plog::debug, "demo.csv"); // Initialize logging to the file.
-	vector <pair <mavlink_highres_imu_t, uint64_t>>::iterator it; // Declare iterator for moving through vector
-	mavlink_highres_imu_t imu;
-	uint64_t timestamp;
-
     while ( ! time_to_exit )
 	{
         data = input_buffer->clear();
-		/*
-		for(it = data.begin(); it != data.end(); it++)
-		{
-			imu = (*it).first;
-			timestamp = (*it).second;
-			//printf("Acc  (NED):  % f % f % f (m/s^2) Timestamp: %i", imu.xacc , imu.yacc , imu.zacc, timestamp);
-		}
-		*/
+		log_buffer_to_csv(data);
 		printf("Sindy is thinking...\n");
 		usleep(5000000);
 		printf("Sindy is done...\n");
 	}
-
 	compute_status = false;
 
 	return;

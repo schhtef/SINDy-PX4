@@ -156,6 +156,8 @@ struct Time_Stamps
 	uint64_t position_target_global_int;
 	uint64_t highres_imu;
 	uint64_t attitude;
+	uint64_t message_interval;
+	uint64_t actuator_output_status;
 
 	void
 	reset_timestamps()
@@ -170,6 +172,8 @@ struct Time_Stamps
 		position_target_global_int = 0;
 		highres_imu = 0;
 		attitude = 0;
+		message_interval = 0;
+		actuator_output_status = 0;
 	}
 
 };
@@ -211,6 +215,12 @@ struct Mavlink_Messages {
 
 	// Attitude
 	mavlink_attitude_t attitude;
+
+	// Message Interval
+	mavlink_message_interval_t message_interval;
+
+	// Actuator Setpoint
+	mavlink_actuator_output_status_t actuator_status;
 
 	// System Parameters?
 

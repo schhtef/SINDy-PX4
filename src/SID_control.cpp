@@ -113,16 +113,17 @@ top (int argc, char **argv)
 	}
 
 	/*
-	 * Instantiate a buffer object
+	 * Instantiate buffer objects
 	 *
 	 * This object handles the synchronization between the producer (autopilot interface)
 	 * and consumer (SINDy). It creates a buffer for the desired data of length BUFFER_LENGTH.
 	 * The buffer implements mutexing and condition variables which allows the separate
-	 * Producer and Consumer threads to access it without data races.
+	 * Producer and Consumer threads to access it without data races. Each buffer instance is 
+	 * associated with a Mavlink type which is passed into the SID
 	 *
 	 */
 	Buffer input_buffer(buffer_length);
-
+	
 	/*
 	 * Instantiate a system identification object
 	 *
@@ -212,6 +213,29 @@ void
 commands(Autopilot_Interface &api, bool autotakeoff)
 {
 
+	//Request mavlink streams in addition to defaults
+
+	// Prepare command for setting message interval
+	mavlink_command_int_t com = { 0 };
+	com.target_system    = api.system_id; //Companion system id
+	com.target_component = api.autopilot_id; //Autopilot system id
+	com.command          = MAV_CMD_SET_MESSAGE_INTERVAL; //Command to send
+	com.param1           = MAVLINK_MSG_ID_ACTUATOR_OUTPUT_STATUS; //Requested Message
+	com.param2           = 100000; //Message interval
+
+	// Encode
+	mavlink_message_t message;
+	mavlink_msg_command_int_encode(api.system_id, api.companion_id, &message, &com);
+
+	// Send the message
+	int len = api.write_message(message);
+
+	if(!len)
+	{
+		fprintf(stderr, "Failed to set message interval\n");
+	}
+
+
 	// --------------------------------------------------------------------------
 	//   GET A MESSAGE
 	// --------------------------------------------------------------------------
@@ -243,11 +267,7 @@ commands(Autopilot_Interface &api, bool autotakeoff)
 	*/
 	while(1)
 	{
-		//poll the autopilot interface for having full buffers
-		//if it's full, mutex the flag
-		//call buffer.clear to return then empty buffer
-		//clear flag
-		//release mutex
+		
 	}
 	printf("\n");
 

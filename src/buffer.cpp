@@ -24,12 +24,13 @@ Buffer()
 
 }
 
+
 Buffer::
 Buffer(int buffer_length_)
 {
-	//initialize first row of the buffer
 	buffer_length = buffer_length_;
 }
+
 
 Buffer::
 ~Buffer()
@@ -37,8 +38,10 @@ Buffer::
 
 }
 
-void Buffer::insert(pair <mavlink_highres_imu_t, uint64_t> element)
+void Buffer::insert(mavlink_message_t message)
 {
+	// Generic function so we can pass any mavlink message type
+
 	// thread safe insertion into the buffer, ensures that no insertion occurs when buffer is full
 	//will cause the calling thread to wait if it is full
 
@@ -51,11 +54,58 @@ void Buffer::insert(pair <mavlink_highres_imu_t, uint64_t> element)
 		return buffer_counter != buffer_length; 
 	});
 
-	//insert element into buffer
-	buffer.push_back(element);
+	// Switch on message type to put into the appropriate vector
+	switch(message.msgid)
+	{
+		case MAVLINK_MSG_ID_LOCAL_POSITION_NED:
+		{
+			mavlink_local_position_ned_t element;
+			mavlink_msg_local_position_ned_decode(&message, &element);
+			input_buffer.buffered_local_position_ned.push_back(element);
+			break;
+		}
 
-	//increment buffer counter
-	buffer_counter++;
+		case MAVLINK_MSG_ID_GLOBAL_POSITION_INT:
+		{
+			mavlink_global_position_int_t element;
+			mavlink_msg_global_position_int_decode(&message, &element);
+			input_buffer.buffered_global_position_int.push_back(element);
+			break;
+		}
+
+		case MAVLINK_MSG_ID_HIGHRES_IMU:
+		{
+			mavlink_highres_imu_t element;
+			mavlink_msg_highres_imu_decode(&message, &element);
+			input_buffer.buffered_highres_imu.push_back(element);
+			break;
+		}
+
+		case MAVLINK_MSG_ID_ATTITUDE:
+		{
+			mavlink_attitude_t element;
+			mavlink_msg_attitude_decode(&message, &element);
+			input_buffer.buffered_attitude.push_back(element);
+			break;
+		}
+
+		case MAVLINK_MSG_ID_ACTUATOR_OUTPUT_STATUS:
+		{
+			mavlink_actuator_output_status_t element;
+			mavlink_msg_actuator_output_status_decode(&message, &element);
+			input_buffer.buffered_actuator_status.push_back(element);
+			break;
+		}
+
+		default:
+		{
+			fprintf(stderr, "Warning, did not insert message id %i into buffer\n", message.msgid);
+			break;
+		}
+	}
+
+	buffer_counter = find_max_length(input_buffer);
+	//if one of the input buffers has reached the maximum length, notify that the buffer is full
 
 	if(buffer_counter == buffer_length)
 	{
@@ -65,12 +115,10 @@ void Buffer::insert(pair <mavlink_highres_imu_t, uint64_t> element)
 	}
 	//unlock mutex
 	unique_lock.unlock();
-
-
-
 }
 
-std::vector<pair <mavlink_highres_imu_t, uint64_t>> Buffer::clear()
+Mavlink_Message_Buffers
+Buffer::clear()
 {
 	// This block of code is locked to the calling thread
 	// ie. the buffer is emptied without having any data added
@@ -83,13 +131,16 @@ std::vector<pair <mavlink_highres_imu_t, uint64_t>> Buffer::clear()
 	// buffer will not notify consumer until it has filled up
     full.wait(unique_lock, [this]{return buffer_counter == buffer_length;});
     
-    //copy buffer contents to new vector
-	std::vector<pair <mavlink_highres_imu_t, uint64_t>> data (buffer);
+    // Copy buffer contents to new vector, because we will unlock the mutex
+	// before returning the buffer
+	Mavlink_Message_Buffers *data = new Mavlink_Message_Buffers;
+	*data = input_buffer;
+
 	printf("Buffer has been emptied!\n");
 	printf("Buffer Counter: %d\n", buffer_counter);
 	
 	//empty buffer
-	buffer.clear();
+	input_buffer.clear_buffers();
 	buffer_counter = 0;
 
     // Notify a single thread that the buffer isn't full
@@ -98,10 +149,38 @@ std::vector<pair <mavlink_highres_imu_t, uint64_t>> Buffer::clear()
     // Unlock unique lock
     unique_lock.unlock();
     
-
-	// Return copy of buffer
-	return data;
+	// Return copy of buffer, shouldn't need to deallocate because the compiler does this on function return
+	return *data;
 }
+
+// Go through all buffers and find the longest one
+int find_max_length(Mavlink_Message_Buffers buffer)
+{
+    int max_length = buffer.buffered_actuator_status.size();
+
+    if(buffer.buffered_attitude.size() > max_length)
+    {
+        max_length = buffer.buffered_attitude.size();
+    }
+
+    if(buffer.buffered_global_position_int.size() > max_length)
+    {
+        max_length = buffer.buffered_global_position_int.size();
+    }
+
+    if(buffer.buffered_highres_imu.size() > max_length)
+    {
+        max_length = buffer.buffered_highres_imu.size();
+    }
+
+    if(buffer.buffered_local_position_ned.size() > max_length)
+    {
+        max_length = buffer.buffered_local_position_ned.size();
+    }
+
+    return max_length;
+}
+
 
 int Buffer::
 start()
@@ -119,6 +198,7 @@ start()
 	*/
 	
 }
+
 
 int Buffer::
 read_thread()
@@ -140,6 +220,7 @@ read_thread()
 // ------------------------------------------------------------------------------
 //   SHUTDOWN
 // ------------------------------------------------------------------------------
+
 void Buffer::
 stop()
 {
@@ -163,6 +244,7 @@ stop()
 // ------------------------------------------------------------------------------
 //   Quit Handler
 // ------------------------------------------------------------------------------
+
 void Buffer::
 handle_quit( int sig )
 {
@@ -180,7 +262,7 @@ handle_quit( int sig )
 void* start_buffer_read_thread(void *args)
 {
 	/*
-    Buffer<T> *buffer = (Buffer<T> *)args;
+    Buffer *buffer = (Buffer *)args;
 
     buffer->read_thread();
 

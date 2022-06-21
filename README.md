@@ -6,7 +6,7 @@ Companion computer software for System Identification using PX4
 2. Clone the PX4-Autopilot repository and complete installation of dependencies by following this [guide](https://dev.px4.io/v1.10_noredirect/en/simulation/gazebo.html)
 3. Startup the gazebo simulation by running `px4_sitl gazebo` within the root directory
 4. Run the QGroundControl.appimage
-5. Start SID_Control by running `./Build/SID_Control -u 127.0.0.1 -p 14540-s 100` from the PX4-SID root directory
+5. Start SID_Control by running `./build/SID_control -u 127.0.0.1 -p 14540 -s 100` from the PX4-SID root directory
 
 ## CMD Line Options
 For simulation with gazebo, the three important parameters is the UDP port and IP address, and the buffer length.

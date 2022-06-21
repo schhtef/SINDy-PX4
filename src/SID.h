@@ -20,7 +20,7 @@
 #include "buffer.h"
 #include "plog/Log.h"
 #include "plog/Initializers/RollingFileInitializer.h"
-#include <map>
+#include "logger.h"
 
 using namespace std;
 
@@ -32,8 +32,8 @@ class SID
 {
 private:
     Buffer *input_buffer;
-    std::vector <pair <mavlink_highres_imu_t, uint64_t>> data;
-    bool time_to_exit;
+    Mavlink_Message_Buffers data;
+    bool time_to_exit = false;
     pthread_t compute_tid = 0;
 public:
     SID(Buffer *input_buffer_);
