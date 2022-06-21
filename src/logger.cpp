@@ -1,126 +1,102 @@
 /**
- * @file logger.cpp
+ * @file logger.h
  *
- * @brief Telemetry file logging functions
+ * @brief helper functions for logging data buffer to csv 
  *
- * Functions for reading/writing mavlink messages from/to files
- * 
  * @author Stefan Bichlmaier, <bichlmaier.stef@gmail.com>
  *
  */
 
-// ------------------------------------------------------------------------------
-//   Includes
-// ------------------------------------------------------------------------------
-
 #include "logger.h"
 
-// ------------------------------------------------------------------------------
-//   Con/De structors
-// ------------------------------------------------------------------------------
-Logger::
-Logger(ofstream *file_, Mavlink_Messages *messages_)
+void log_buffer_to_csv(Mavlink_Message_Buffers buffer)
 {
-    file = file_; // file management object
-    write_tid = 0; // write thread id
-	messages = messages_;
-}
+    int max_length = find_max_length(buffer);
 
-Logger::
-~Logger()
-{
-}
+    //create an array of strings, size max length
+    //iterate through buffers, appending element + ","
+    //append " "+ "," if we have reached the end
+    //std::string output[max_length];
+    std::ofstream myfile;
+    myfile.open ("log.csv");
 
-int
-Logger::
-start()
-{
-    int result;
-
-    //check that file is open and ready to write to
-    if ( !file->is_open() ) // error if file not open
-	{
-		fprintf(stderr,"ERROR: file not open\n");
-		throw 1;
-	}
+    string header;
+    header += "Attitude_time_ms, Pitch, Pitchspeed, Roll, Rollspeed, Yaw, Yawspeed,";
+    header += "Global Position Time ms, Altitude, Heading, Latitude, Longitude, Relative Altitude, Velocity X, Velocity Y, Velocity Z,";
+    header += "IMU time us, Acceleration X, Acceleration Y, Gyro X, Gyro Y,";
+    header += "Local Position Time ms, Velocity X, Velocity Y, Velocity Z, Position X, Position Y, Position Z\n";
+    myfile << header;
     
-    
-    //start the file write thread
-    printf("START FILE WRITE THREAD \n");
-
-	result = pthread_create( &write_tid, NULL, &start_logger_write_thread, this );
-	if ( result ) throw result;
-
-	// now we're writing to file
-	printf("\n");
-    
-}
-
-int
-Logger::
-write_thread()
-{
-    while(!time_to_exit)
+    for(int i = 0; i < max_length; i++)
     {
-		mavlink_highres_imu_t imu = messages->highres_imu;
-		//printf("    acc  (NED):  % f % f % f (m/s^2)\n", imu.xacc , imu.yacc , imu.zacc );
-		*file << imu.xacc << endl;
-		//*file << printf();
-        //write messages to file at writingRate
-        usleep(250000); //4hz
+        string row;
+        if(i >= buffer.buffered_attitude.size())
+        {
+            //append empty cells
+            row += " , , , , , , ,";
+        }
+        else
+        {
+            //append each element to the row
+            row += to_string(buffer.buffered_attitude.at(i).time_boot_ms) + ",";
+            row += to_string(buffer.buffered_attitude.at(i).pitch) + ",";
+            row += to_string(buffer.buffered_attitude.at(i).pitchspeed) + ",";
+            row += to_string(buffer.buffered_attitude.at(i).roll) + ",";
+            row += to_string(buffer.buffered_attitude.at(i).rollspeed) + ",";
+            row += to_string(buffer.buffered_attitude.at(i).yaw) + ",";
+            row += to_string(buffer.buffered_attitude.at(i).yawspeed) + ",";
+        }
+
+        if(i >= buffer.buffered_global_position_int.size())
+        {
+            //append empty cells
+            row += " , , , , , , , , ,";           
+        }
+        else
+        {
+            row += to_string(buffer.buffered_global_position_int.at(i).time_boot_ms) + ",";
+            row += to_string(buffer.buffered_global_position_int.at(i).alt) + ",";
+            row += to_string(buffer.buffered_global_position_int.at(i).hdg) + ",";
+            row += to_string(buffer.buffered_global_position_int.at(i).lat) + ",";
+            row += to_string(buffer.buffered_global_position_int.at(i).lon) + ",";
+            row += to_string(buffer.buffered_global_position_int.at(i).relative_alt) + ",";
+            row += to_string(buffer.buffered_global_position_int.at(i).vx) + ",";
+            row += to_string(buffer.buffered_global_position_int.at(i).vy) + ",";
+            row += to_string(buffer.buffered_global_position_int.at(i).vz) + ",";
+        }
+
+        if(i >= buffer.buffered_highres_imu.size())
+        {
+            //append empty cells
+            row += " , , , , ,";
+        }
+        else
+        {
+            row += to_string(buffer.buffered_highres_imu.at(i).time_usec) + ",";
+            row += to_string(buffer.buffered_highres_imu.at(i).xacc) + ",";
+            row += to_string(buffer.buffered_highres_imu.at(i).yacc) + ",";
+            row += to_string(buffer.buffered_highres_imu.at(i).xgyro) + ",";
+            row += to_string(buffer.buffered_highres_imu.at(i).ygyro) + ",";
+        }
+
+        if(i >= buffer.buffered_local_position_ned.size())
+        {
+            //append empty cells
+            row += " , , , , , , \n";
+        }
+        else
+        {
+            row += to_string(buffer.buffered_local_position_ned.at(i).time_boot_ms) + ",";
+            row += to_string(buffer.buffered_local_position_ned.at(i).vx) + ",";
+            row += to_string(buffer.buffered_local_position_ned.at(i).vy) + ",";
+            row += to_string(buffer.buffered_local_position_ned.at(i).vz) + ",";
+            row += to_string(buffer.buffered_local_position_ned.at(i).x) + ",";
+            row += to_string(buffer.buffered_local_position_ned.at(i).y) + ",";
+            row += to_string(buffer.buffered_local_position_ned.at(i).z) + "\n";
+        }
+        myfile << row;
     }
+    myfile.close();
+    return;
 }
 
-// ------------------------------------------------------------------------------
-//   SHUTDOWN
-// ------------------------------------------------------------------------------
-void
-Logger::
-stop()
-{
-	// --------------------------------------------------------------------------
-	//   CLOSE THREADS
-	// --------------------------------------------------------------------------
-	printf("CLOSE THREADS\n");
-
-	// signal exit
-	time_to_exit = true;
-
-	// wait for exit
-	pthread_join(write_tid,NULL);
-
-	// now the read and write threads are closed
-	printf("\n");
-
-    // close the logfile
-    file->close();
-
-}
-
-// ------------------------------------------------------------------------------
-//   Quit Handler
-// ------------------------------------------------------------------------------
-void
-Logger::
-handle_quit( int sig )
-{
-	try {
-		stop();
-	}
-	catch (int error) {
-		fprintf(stderr,"Warning, could not stop logger\n");
-	}
-
-}
-
-//this function exists because it doesn't depend on the state of the logger object so
-//it doesn't need to be a member function
-void*
-start_logger_write_thread(void *args)
-{
-    Logger *logger = (Logger *)args;
-
-    logger->write_thread();
-
-    return NULL;
-}

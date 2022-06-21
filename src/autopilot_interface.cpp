@@ -188,7 +188,7 @@ set_yaw_rate(float yaw_rate, mavlink_set_position_target_local_ned_t &sp)
 // ------------------------------------------------------------------------------
 // Scope resolution operators are used to define function contents outside of class declaration 
 Autopilot_Interface::
-Autopilot_Interface(Generic_Port *port_)
+Autopilot_Interface(Generic_Port *port_, Buffer *input_buffer_)
 {
 	// initialize attributes
 	write_count = 0;
@@ -209,6 +209,8 @@ Autopilot_Interface(Generic_Port *port_)
 	current_messages.compid = autopilot_id;
 
 	port = port_; // port management object
+
+	input_buffer = input_buffer_; // buffer management object
 
 }
 
@@ -263,7 +265,7 @@ read_messages()
 			// Handle Message ID
 			switch (message.msgid)
 			{
-
+				//Insert messages in shared buffer as they are parsed
 				case MAVLINK_MSG_ID_HEARTBEAT:
 				{
 					//printf("MAVLINK_MSG_ID_HEARTBEAT\n");
@@ -306,6 +308,7 @@ read_messages()
 					mavlink_msg_local_position_ned_decode(&message, &(current_messages.local_position_ned));
 					current_messages.time_stamps.local_position_ned = get_time_usec();
 					this_timestamps.local_position_ned = current_messages.time_stamps.local_position_ned;
+					input_buffer->insert(message);
 					break;
 				}
 
@@ -342,6 +345,7 @@ read_messages()
 					mavlink_msg_highres_imu_decode(&message, &(current_messages.highres_imu));
 					current_messages.time_stamps.highres_imu = get_time_usec();
 					this_timestamps.highres_imu = current_messages.time_stamps.highres_imu;
+					input_buffer->insert(message);
 					break;
 				}
 
@@ -351,6 +355,26 @@ read_messages()
 					mavlink_msg_attitude_decode(&message, &(current_messages.attitude));
 					current_messages.time_stamps.attitude = get_time_usec();
 					this_timestamps.attitude = current_messages.time_stamps.attitude;
+					input_buffer->insert(message);
+					break;
+				}
+
+				case MAVLINK_MSG_ID_MESSAGE_INTERVAL:
+				{
+					//printf("MAVLINK_MSG_ID_ATTITUDE\n");
+					mavlink_msg_message_interval_decode(&message, &(current_messages.message_interval));
+					current_messages.time_stamps.message_interval = get_time_usec();
+					this_timestamps.message_interval = current_messages.time_stamps.message_interval;
+					break;
+				}
+
+				case MAVLINK_MSG_ID_ACTUATOR_OUTPUT_STATUS:
+				{
+					//printf("MAVLINK_MSG_ID_ATTITUDE\n");
+					mavlink_msg_actuator_output_status_decode(&message, &(current_messages.actuator_status));
+					current_messages.time_stamps.actuator_output_status = get_time_usec();
+					this_timestamps.actuator_output_status = current_messages.time_stamps.actuator_output_status;
+					input_buffer->insert(message);
 					break;
 				}
 

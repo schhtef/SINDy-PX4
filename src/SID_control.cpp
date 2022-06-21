@@ -47,6 +47,9 @@
  *
  */
 
+// ------------------------------------------------------------------------------
+//   Defines
+// ------------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------------
@@ -80,15 +83,11 @@ top (int argc, char **argv)
 	int udp_port = 14540;
 	bool autotakeoff = false;
 	string filename = "/home/stefan/Documents/PX4-SID/tests/log.txt";
+	int buffer_length = 100;
 
 	// do the parse, will throw an int if it fails
-	parse_commandline(argc, argv, uart_name, baudrate, use_udp, udp_ip, udp_port, autotakeoff, filename);
-
-	// create fstream object, should be opened automatically by the constructor
-	ofstream logfile (filename);
-	//logfile.open();
+	parse_commandline(argc, argv, uart_name, baudrate, use_udp, udp_ip, udp_port, autotakeoff, filename, &buffer_length);
 	
-
 	// --------------------------------------------------------------------------
 	//   PORT and THREAD STARTUP
 	// --------------------------------------------------------------------------
@@ -99,7 +98,7 @@ top (int argc, char **argv)
 	 * This object handles the opening and closing of the offboard computer's
 	 * port over which it will communicate to an autopilot.  It has
 	 * methods to read and write a mavlink_message_t object.  To help with read
-	 * and write in the context of pthreading, it gaurds port operations with a
+	 * and write in the context of pthreading, it guards port operations with a
 	 * pthread mutex lock. It can be a serial or an UDP port.
 	 *
 	 */
@@ -113,6 +112,25 @@ top (int argc, char **argv)
 		port = new Serial_Port(uart_name, baudrate);
 	}
 
+	/*
+	 * Instantiate buffer objects
+	 *
+	 * This object handles the synchronization between the producer (autopilot interface)
+	 * and consumer (SINDy). It creates a buffer for the desired data of length BUFFER_LENGTH.
+	 * The buffer implements mutexing and condition variables which allows the separate
+	 * Producer and Consumer threads to access it without data races. Each buffer instance is 
+	 * associated with a Mavlink type which is passed into the SID
+	 *
+	 */
+	Buffer input_buffer(buffer_length);
+	
+	/*
+	 * Instantiate a system identification object
+	 *
+	 * This object takes data from the input buffer and implements the SINDy algorithm on it
+	 *
+	 */
+	SID SINDy(&input_buffer);
 
 	/*
 	 * Instantiate an autopilot interface object
@@ -127,17 +145,11 @@ top (int argc, char **argv)
 	 * method.  Signal the exit of this mode with disable_offboard_control().  It's
 	 * important that one way or another this program signals offboard mode exit,
 	 * otherwise the vehicle will go into failsafe.
+	 * 
+	 * The input buffer pointer is passed into its constructor so it can write to the buffer
 	 *
 	 */
-	Autopilot_Interface autopilot_interface(port);
-
-	/*
-	*Instantiate a data logger object
-	*
-	* Starts a thread to write mavlink messages to a logfile specified in the command
-	* line arguments.
-	*/
-	Logger logger(&logfile, &autopilot_interface.current_messages);
+	Autopilot_Interface autopilot_interface(port, &input_buffer);
 
 	/*
 	 * Setup interrupt signal handler
@@ -149,7 +161,7 @@ top (int argc, char **argv)
 	 */
 	port_quit         = port;
 	autopilot_interface_quit = &autopilot_interface;
-	logger_quit = &logger;
+	SINDy_quit = &SINDy;
 	signal(SIGINT,quit_handler);
 
 	/*
@@ -158,7 +170,7 @@ top (int argc, char **argv)
 	 */
 	port->start();
 	autopilot_interface.start();
-	logger.start();
+	SINDy.start();
 
 
 	// --------------------------------------------------------------------------
@@ -180,7 +192,6 @@ top (int argc, char **argv)
 	 */
 	autopilot_interface.stop();
 	port->stop();
-	logger.stop();
 
 	delete port;
 
@@ -201,6 +212,29 @@ top (int argc, char **argv)
 void
 commands(Autopilot_Interface &api, bool autotakeoff)
 {
+
+	//Request mavlink streams in addition to defaults
+
+	// Prepare command for setting message interval
+	mavlink_command_int_t com = { 0 };
+	com.target_system    = api.system_id; //Companion system id
+	com.target_component = api.autopilot_id; //Autopilot system id
+	com.command          = MAV_CMD_SET_MESSAGE_INTERVAL; //Command to send
+	com.param1           = MAVLINK_MSG_ID_ACTUATOR_OUTPUT_STATUS; //Requested Message
+	com.param2           = 100000; //Message interval
+
+	// Encode
+	mavlink_message_t message;
+	mavlink_msg_command_int_encode(api.system_id, api.companion_id, &message, &com);
+
+	// Send the message
+	int len = api.write_message(message);
+
+	if(!len)
+	{
+		fprintf(stderr, "Failed to set message interval\n");
+	}
+
 
 	// --------------------------------------------------------------------------
 	//   GET A MESSAGE
@@ -233,7 +267,7 @@ commands(Autopilot_Interface &api, bool autotakeoff)
 	*/
 	while(1)
 	{
-
+		
 	}
 	printf("\n");
 
@@ -253,7 +287,7 @@ commands(Autopilot_Interface &api, bool autotakeoff)
 // throws EXIT_FAILURE if could not open the port
 void
 parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate,
-		bool &use_udp, char *&udp_ip, int &udp_port, bool &autotakeoff, string &filename)
+		bool &use_udp, char *&udp_ip, int &udp_port, bool &autotakeoff, string &filename, int *buffer_length)
 {
 
 	// string for command line usage
@@ -330,6 +364,17 @@ parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate,
 			}
 		}
 
+		// buffer
+		if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--buffer") == 0) {
+			if (argc > i + 1) {
+				i++;
+				*buffer_length = atoi(argv[i]);
+			} else {
+				printf("%s\n",commandline_usage);
+				throw EXIT_FAILURE;
+			}
+		}
+
 	}
 	// end: for each input argument
 
@@ -361,12 +406,11 @@ quit_handler( int sig )
 	}
 	catch (int error){}
 
-	// logger
+	// SID
 	try {
-		logger_quit->handle_quit(sig);
+		SINDy_quit->stop();
 	}
 	catch (int error){}
-
 	// end program here
 	exit(0);
 

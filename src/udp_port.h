@@ -61,8 +61,8 @@
 #include <errno.h>
 #include <string.h>
 #include <pthread.h> // This uses POSIX Threads
-#include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <stdlib.h>

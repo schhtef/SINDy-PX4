@@ -56,6 +56,7 @@
 // ------------------------------------------------------------------------------
 
 #include "generic_port.h"
+#include "buffer.h"
 
 #include <signal.h>
 #include <time.h>
@@ -155,6 +156,8 @@ struct Time_Stamps
 	uint64_t position_target_global_int;
 	uint64_t highres_imu;
 	uint64_t attitude;
+	uint64_t message_interval;
+	uint64_t actuator_output_status;
 
 	void
 	reset_timestamps()
@@ -169,6 +172,8 @@ struct Time_Stamps
 		position_target_global_int = 0;
 		highres_imu = 0;
 		attitude = 0;
+		message_interval = 0;
+		actuator_output_status = 0;
 	}
 
 };
@@ -211,6 +216,12 @@ struct Mavlink_Messages {
 	// Attitude
 	mavlink_attitude_t attitude;
 
+	// Message Interval
+	mavlink_message_interval_t message_interval;
+
+	// Actuator Setpoint
+	mavlink_actuator_output_status_t actuator_status;
+
 	// System Parameters?
 
 
@@ -249,7 +260,7 @@ class Autopilot_Interface
 public:
 
 	Autopilot_Interface();
-	Autopilot_Interface(Generic_Port *port_);
+	Autopilot_Interface(Generic_Port *port_,Buffer *input_buffer_);
 	//Destructor, can be called explicitly, or gets invoked automatically when the class goes out of scope
 	~Autopilot_Interface();
 
@@ -264,6 +275,8 @@ public:
 
 	Mavlink_Messages current_messages;
 	mavlink_set_position_target_local_ned_t initial_position;
+
+	Buffer *input_buffer;
 
 	void update_setpoint(mavlink_set_position_target_local_ned_t setpoint);
 	void read_messages();
@@ -283,7 +296,6 @@ public:
 
 
 private:
-
 	Generic_Port *port;
 
 	bool time_to_exit;

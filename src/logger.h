@@ -1,61 +1,27 @@
 /**
  * @file logger.h
  *
- * @brief data logger definition
- *
- * Functions for opening, closing, reading and writing telemetry files
+ * @brief helper functions for logging data buffer to csv 
  *
  * @author Stefan Bichlmaier, <bichlmaier.stef@gmail.com>
  *
  */
 
-#ifndef LOGGER_H_
-#define LOGGER_H_
+#ifndef logger_H_
+#define logger_H_
 
-//This module should allow me to write telemetry to a type of log file and storage medium/location chosen at runtime.
+#define NUMBER_OF_BUFFERS 5
 // ------------------------------------------------------------------------------
 //   Includes
 // ------------------------------------------------------------------------------
-#include <iostream>
-#include <fstream>
-#include <unistd.h>
-#include "autopilot_interface.h"
 #include "c_library_v2/common/mavlink.h"
+#include "buffer.h"
+#include "string"
+#include <fstream>
+#include <iostream>
 
 using namespace std;
 
-// ------------------------------------------------------------------------------
-//   Function prototypes
-// ------------------------------------------------------------------------------
-void *start_logger_write_thread(void *args); //pthread helper function
+void log_buffer_to_csv(Mavlink_Message_Buffers buffer);
 
-// ----------------------------------------------------------------------------------
-//   Logger Class
-// ----------------------------------------------------------------------------------
-/*
- * Logger Class
- *
- */
-class Logger
-{
-
-public:
-    //Take parameters filename, dir, file specifics
-    Logger(ofstream *file_, Mavlink_Messages *messages_); //Initialize file attributes to be ready for writing
-    ~Logger();
-
-    int start();
-    void stop();
-    void handle_quit( int sig );
-    int write_thread();
-
-    bool time_to_exit;
-	pthread_t write_tid;
-
-    int writingRate;
-private:
-    ofstream *file; //we don't want to change attributes of the file once the writing process has started
-    Mavlink_Messages *messages;
-};
-
-#endif  //LOGGER_H_
+#endif
