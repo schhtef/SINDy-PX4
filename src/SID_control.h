@@ -24,6 +24,14 @@ using namespace std;
 #include "plog/Log.h"
 #include "plog/Initializers/RollingFileInitializer.h"
 
+// Top state machine logic states
+enum system_states
+{
+	GROUND_IDLE_STATE = 0, // Aircraft is on the ground and disarmed, no logging or system identification is needed
+	FLIGHT_LOG_STATE = 1, // Aircraft is armed and ready for flight, start logging flight data only
+	FLIGHT_LOG_SID_STATE = 2, // Aircraft is armed and ready for flight, system identification without commands will occur
+	FLIGHT_LOG_SID_CMD_STATE = 3 // Aircraft is armed and ready for flight, system identification with commands will occur
+};
 
 int main(int argc, char **argv);
 int top(int argc, char **argv);
@@ -37,4 +45,5 @@ void parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate,
 Autopilot_Interface *autopilot_interface_quit;
 Generic_Port *port_quit;
 SID *SINDy_quit;
+int system_state = GROUND_IDLE_STATE;
 void quit_handler( int sig );

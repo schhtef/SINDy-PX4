@@ -235,39 +235,44 @@ commands(Autopilot_Interface &api, bool autotakeoff)
 		fprintf(stderr, "Failed to set message interval\n");
 	}
 
-
-	// --------------------------------------------------------------------------
-	//   GET A MESSAGE
-	// --------------------------------------------------------------------------
-	printf("READ SOME MESSAGES \n");
-
 	// copy current messages
 	Mavlink_Messages messages = api.current_messages;
 
 	// local position in ned frame
 	mavlink_local_position_ned_t pos = messages.local_position_ned;
-	printf("Got message LOCAL_POSITION_NED (spec: https://mavlink.io/en/messages/common.html#LOCAL_POSITION_NED)\n");
+	printf("Initial LOCAL_POSITION_NED (spec: https://mavlink.io/en/messages/common.html#LOCAL_POSITION_NED)\n");
 	printf("    pos  (NED):  %f %f %f (m)\n", pos.x, pos.y, pos.z );
-	/*
-	// hires imu
-    while(1)
-    {
-        messages = api.current_messages;
-        mavlink_highres_imu_t imu = messages.highres_imu;
-        printf("Got message HIGHRES_IMU (spec: https://mavlink.io/en/messages/common.html#HIGHRES_IMU)\n");
-        printf("    ap time:     %lu \n", imu.time_usec);
-        printf("    acc  (NED):  % f % f % f (m/s^2)\n", imu.xacc , imu.yacc , imu.zacc );
-        printf("    gyro (NED):  % f % f % f (rad/s)\n", imu.xgyro, imu.ygyro, imu.zgyro);
-        printf("    mag  (NED):  % f % f % f (Ga)\n"   , imu.xmag , imu.ymag , imu.zmag );
-        printf("    baro:        %f (mBar) \n"  , imu.abs_pressure);
-        printf("    altitude:    %f (m) \n"     , imu.pressure_alt);
-        printf("    temperature: %f C \n"       , imu.temperature );
-        usleep(1000000);
-    }
-	*/
+
 	while(1)
 	{
-		
+		switch(system_state)
+		{
+			case GROUND_IDLE_STATE:
+				// If autopilot mode is armed, switch to FLIGHT_LOG_STATE
+				if(api.current_messages.heartbeat.base_mode & MAV_MODE_FLAG_SAFETY_ARMED)
+				{
+					system_state = FLIGHT_LOG_STATE;
+				}
+				//construct filename and location
+			break;
+
+			case FLIGHT_LOG_STATE:
+				// If autopilot is disarmed, switch to GROUND_IDLE_STATE
+				if(api.current_messages.heartbeat.base_mode & MAV_MODE_FLAG_SAFETY_ARMED)
+				{
+					system_state = GROUND_IDLE_STATE;
+				}
+				//start SID thread? or start logging?
+			break;
+
+			case FLIGHT_LOG_SID_STATE:
+				//TODO implement switch to passive system identification state
+			break;
+
+			case FLIGHT_LOG_SID_CMD_STATE:
+				//TODO implement switch to active system identification state
+			break;
+		}
 	}
 	printf("\n");
 

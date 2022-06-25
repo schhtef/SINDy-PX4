@@ -40,15 +40,13 @@ Buffer::
 
 void Buffer::insert(mavlink_message_t message)
 {
-	// Generic function so we can pass any mavlink message type
-
 	// thread safe insertion into the buffer, ensures that no insertion occurs when buffer is full
-	//will cause the calling thread to wait if it is full
+	// will cause the calling thread to wait if it is full
 
 	std::unique_lock<std::mutex> unique_lock(mtx);
 
-	//use lambda function to determine if the buffer is currently full
-	//the calling thread waits on the not_full condition variable until the consumer notifies it is empty
+	// use lambda function to determine if the buffer is currently full
+	// the calling thread waits on the not_full condition variable until the consumer notifies it is empty
 	not_full.wait(unique_lock, [this]()
 	{
 		return buffer_counter != buffer_length; 
@@ -105,11 +103,11 @@ void Buffer::insert(mavlink_message_t message)
 	}
 
 	buffer_counter = find_max_length(input_buffer);
-	//if one of the input buffers has reached the maximum length, notify that the buffer is full
+	// If one of the input buffers has reached the maximum length, notify that the buffer is full
 
 	if(buffer_counter == buffer_length)
 	{
-		//notify blocked thread that buffer is full
+		// Notify blocked thread that buffer is full
 		printf("Buffer is full!\n");
 		full.notify_one();
 	}
