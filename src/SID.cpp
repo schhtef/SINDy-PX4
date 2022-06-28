@@ -38,7 +38,12 @@ compute_thread()
     while ( ! time_to_exit )
 	{
         data = input_buffer->clear();
-		log_buffer_to_csv(data);
+		// might cause a race condition where the SINDy thread checks disarmed just before the main thread
+		// sets the disarmed flag. Worst case scenario the SINDy thread logs one more buffer
+		if(!disarmed)
+		{
+			log_buffer_to_csv(data, filename);
+		}
 		printf("Sindy is thinking...\n");
 		usleep(5000000);
 		printf("Sindy is done...\n");
@@ -72,17 +77,17 @@ stop()
 
 	// now the read and write threads are closed
 	printf("\n");
-
-	// still need to close the port separately
 }
 
 // ------------------------------------------------------------------------------
 //   Quit Handler
 // ------------------------------------------------------------------------------
+// Separate quit handler for interrupt
 void
 SID::
 handle_quit( int sig )
 {
+	// 
 	try {
 		stop();
 	}

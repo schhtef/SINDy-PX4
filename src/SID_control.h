@@ -37,7 +37,7 @@ int main(int argc, char **argv);
 int top(int argc, char **argv);
 
 //Runtime command handling
-void commands(Autopilot_Interface &autopilot_interface, bool autotakeoff);
+void commands(Autopilot_Interface &autopilot_interface, SID &SINDy, bool autotakeoff, string logfile_directory);
 void parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate,
 		bool &use_udp, char *&udp_ip, int &udp_port, bool &autotakeoff, string &filename, int *buffer_length);
 
@@ -47,3 +47,6 @@ Generic_Port *port_quit;
 SID *SINDy_quit;
 int system_state = GROUND_IDLE_STATE;
 void quit_handler( int sig );
+
+//Filename creation
+char* generate_filename(int flights_since_reboot);

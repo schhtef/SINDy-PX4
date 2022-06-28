@@ -137,7 +137,7 @@ Buffer::clear()
 	printf("Buffer has been emptied!\n");
 	printf("Buffer Counter: %d\n", buffer_counter);
 	
-	//empty buffer
+	// Empty buffer
 	input_buffer.clear_buffers();
 	buffer_counter = 0;
 

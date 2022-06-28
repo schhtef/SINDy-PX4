@@ -254,7 +254,8 @@ read_messages()
 		// ----------------------------------------------------------------------
 		//   HANDLE MESSAGE
 		// ----------------------------------------------------------------------
-		if( success )
+		// Only pay attention to system with ID 1, or else we may receive GCS messages
+		if( success && (message.sysid == 1))
 		{
 
 			// Store message sysid and compid.

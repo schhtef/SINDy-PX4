@@ -9,24 +9,24 @@
 
 #include "logger.h"
 
-void log_buffer_to_csv(Mavlink_Message_Buffers buffer)
+void log_buffer_to_csv(Mavlink_Message_Buffers buffer, string filename)
 {
     int max_length = find_max_length(buffer);
 
     //create an array of strings, size max length
     //iterate through buffers, appending element + ","
     //append " "+ "," if we have reached the end
-    //std::string output[max_length];
     std::ofstream myfile;
-    myfile.open ("log.csv");
+    myfile.open (filename);
 
     string header;
     header += "Attitude_time_ms, Pitch, Pitchspeed, Roll, Rollspeed, Yaw, Yawspeed,";
     header += "Global Position Time ms, Altitude, Heading, Latitude, Longitude, Relative Altitude, Velocity X, Velocity Y, Velocity Z,";
     header += "IMU time us, Acceleration X, Acceleration Y, Gyro X, Gyro Y,";
-    header += "Local Position Time ms, Velocity X, Velocity Y, Velocity Z, Position X, Position Y, Position Z\n";
+    header += "Local Position Time ms, Velocity X, Velocity Y, Velocity Z, Position X, Position Y, Position Z";
+    header += "Actuator Output Status Time us, Active actuators\n";
     myfile << header;
-    
+
     for(int i = 0; i < max_length; i++)
     {
         string row;
@@ -94,9 +94,20 @@ void log_buffer_to_csv(Mavlink_Message_Buffers buffer)
             row += to_string(buffer.buffered_local_position_ned.at(i).y) + ",";
             row += to_string(buffer.buffered_local_position_ned.at(i).z) + "\n";
         }
+
+        if(i >= buffer.buffered_actuator_status.size())
+        {
+            //append empty cells
+            row += " , , , , , , \n";
+        }
+        else
+        {
+            row += to_string(buffer.buffered_actuator_status.at(i).time_usec) + ",";
+            row += to_string(buffer.buffered_actuator_status.at(i).active) + ",";
+            // TODO: Add logic to determine which actuators to log
+        }
         myfile << row;
     }
     myfile.close();
     return;
 }
-

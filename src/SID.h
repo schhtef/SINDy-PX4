@@ -21,6 +21,7 @@
 #include "plog/Log.h"
 #include "plog/Initializers/RollingFileInitializer.h"
 #include "logger.h"
+#include <string>
 
 using namespace std;
 
@@ -46,6 +47,8 @@ public:
     void handle_quit(int sig);
 
     bool compute_status;
+    bool disarmed;
+    string filename;
 };
 
 #endif

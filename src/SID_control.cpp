@@ -82,11 +82,11 @@ top (int argc, char **argv)
 	char *udp_ip = (char*)"127.0.0.1";
 	int udp_port = 14540;
 	bool autotakeoff = false;
-	string filename = "/home/stefan/Documents/PX4-SID/tests/log.txt";
+	string logfile_directory = "/home/stefan/Documents/PX4-SID/tests/";
 	int buffer_length = 100;
 
 	// do the parse, will throw an int if it fails
-	parse_commandline(argc, argv, uart_name, baudrate, use_udp, udp_ip, udp_port, autotakeoff, filename, &buffer_length);
+	parse_commandline(argc, argv, uart_name, baudrate, use_udp, udp_ip, udp_port, autotakeoff, logfile_directory, &buffer_length);
 	
 	// --------------------------------------------------------------------------
 	//   PORT and THREAD STARTUP
@@ -180,7 +180,7 @@ top (int argc, char **argv)
 	/*
 	 * Now we can implement the algorithm we want on top of the autopilot interface
 	 */
-	commands(autopilot_interface, autotakeoff);
+	commands(autopilot_interface, SINDy, autotakeoff, logfile_directory);
 
 
 	// --------------------------------------------------------------------------
@@ -210,8 +210,10 @@ top (int argc, char **argv)
 // ------------------------------------------------------------------------------
 
 void
-commands(Autopilot_Interface &api, bool autotakeoff)
+commands(Autopilot_Interface &api, SID &SINDy, bool autotakeoff, string logfile_directory)
 {
+	// Primary event variables
+	int flights_since_reboot = 0;
 
 	//Request mavlink streams in addition to defaults
 
@@ -243,8 +245,10 @@ commands(Autopilot_Interface &api, bool autotakeoff)
 	printf("Initial LOCAL_POSITION_NED (spec: https://mavlink.io/en/messages/common.html#LOCAL_POSITION_NED)\n");
 	printf("    pos  (NED):  %f %f %f (m)\n", pos.x, pos.y, pos.z );
 
+	// Primary event loop
 	while(1)
 	{
+		int isarmed = api.current_messages.heartbeat.base_mode & MAV_MODE_FLAG_SAFETY_ARMED;
 		switch(system_state)
 		{
 			case GROUND_IDLE_STATE:
@@ -252,17 +256,22 @@ commands(Autopilot_Interface &api, bool autotakeoff)
 				if(api.current_messages.heartbeat.base_mode & MAV_MODE_FLAG_SAFETY_ARMED)
 				{
 					system_state = FLIGHT_LOG_STATE;
+					flights_since_reboot++;
+					SINDy.filename = logfile_directory + "Flight Number: " + to_string(flights_since_reboot);
+					printf("Autopilot armed. Starting system identification for flight number %d\n", flights_since_reboot);
+					SINDy.disarmed = false;
 				}
-				//construct filename and location
 			break;
 
 			case FLIGHT_LOG_STATE:
 				// If autopilot is disarmed, switch to GROUND_IDLE_STATE
-				if(api.current_messages.heartbeat.base_mode & MAV_MODE_FLAG_SAFETY_ARMED)
+				if(!(api.current_messages.heartbeat.base_mode & MAV_MODE_FLAG_SAFETY_ARMED))
 				{
 					system_state = GROUND_IDLE_STATE;
+					printf("Autopilot disarmed. Stopping system identification\n");
+					// Stop the system identification thread
+					SINDy.disarmed = true;
 				}
-				//start SID thread? or start logging?
 			break;
 
 			case FLIGHT_LOG_SID_STATE:
@@ -273,6 +282,7 @@ commands(Autopilot_Interface &api, bool autotakeoff)
 				//TODO implement switch to active system identification state
 			break;
 		}
+		//printf("Base Mode: %d\n", api.current_messages.heartbeat.base_mode);
 	}
 	printf("\n");
 
