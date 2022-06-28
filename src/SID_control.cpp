@@ -253,7 +253,7 @@ commands(Autopilot_Interface &api, SID &SINDy, bool autotakeoff, string logfile_
 		{
 			case GROUND_IDLE_STATE:
 				// If autopilot mode is armed, switch to FLIGHT_LOG_STATE
-				if(api.current_messages.heartbeat.base_mode & MAV_MODE_FLAG_SAFETY_ARMED)
+				if(api.autopilot_armed)
 				{
 					system_state = FLIGHT_LOG_STATE;
 					flights_since_reboot++;
@@ -265,7 +265,7 @@ commands(Autopilot_Interface &api, SID &SINDy, bool autotakeoff, string logfile_
 
 			case FLIGHT_LOG_STATE:
 				// If autopilot is disarmed, switch to GROUND_IDLE_STATE
-				if(!(api.current_messages.heartbeat.base_mode & MAV_MODE_FLAG_SAFETY_ARMED))
+				if(!(api.autopilot_armed))
 				{
 					system_state = GROUND_IDLE_STATE;
 					printf("Autopilot disarmed. Stopping system identification\n");

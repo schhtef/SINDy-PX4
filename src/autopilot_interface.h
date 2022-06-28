@@ -64,6 +64,7 @@
 #include <pthread.h> // This uses POSIX Threads
 #include <unistd.h>  // UNIX standard function definitions
 #include <mutex>
+#include <atomic>
 
 #include "c_library_v2/common/mavlink.h"
 
@@ -117,6 +118,8 @@
 #define MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_LAND         0x2000
 #define MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_LOITER       0x3000
 #define MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_IDLE         0x4000
+
+#define PX4_AUTOPILOT_SYSID 1
 
 // ------------------------------------------------------------------------------
 //   Prototypes
@@ -268,6 +271,7 @@ public:
 	char writing_status;
 	char control_status;
     uint64_t write_count;
+	std::atomic<bool> autopilot_armed;
 
     int system_id;
 	int autopilot_id;

@@ -197,6 +197,8 @@ Autopilot_Interface(Generic_Port *port_, Buffer *input_buffer_)
 	writing_status = 0;      // whether the write thread is running
 	control_status = 0;      // whether the autopilot is in offboard control mode
 	time_to_exit   = false;  // flag to signal thread exit
+	
+	autopilot_armed = false; // atomic flag to tell other threads if ap is armed
 
 	read_tid  = 0; // read thread id
 	write_tid = 0; // write thread id
@@ -207,6 +209,7 @@ Autopilot_Interface(Generic_Port *port_, Buffer *input_buffer_)
 
 	current_messages.sysid  = system_id;
 	current_messages.compid = autopilot_id;
+
 
 	port = port_; // port management object
 
@@ -255,7 +258,7 @@ read_messages()
 		//   HANDLE MESSAGE
 		// ----------------------------------------------------------------------
 		// Only pay attention to system with ID 1, or else we may receive GCS messages
-		if( success && (message.sysid == 1))
+		if( success && (message.sysid == PX4_AUTOPILOT_SYSID))
 		{
 
 			// Store message sysid and compid.
@@ -273,6 +276,8 @@ read_messages()
 					mavlink_msg_heartbeat_decode(&message, &(current_messages.heartbeat));
 					current_messages.time_stamps.heartbeat = get_time_usec();
 					this_timestamps.heartbeat = current_messages.time_stamps.heartbeat;
+					// Set atomic flag with current arming status of the autopilot 
+					autopilot_armed = current_messages.heartbeat.base_mode & MAV_MODE_FLAG_SAFETY_ARMED;
 					break;
 				}
 
