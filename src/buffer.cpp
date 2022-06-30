@@ -108,7 +108,6 @@ void Buffer::insert(mavlink_message_t message)
 	if(buffer_counter == buffer_length)
 	{
 		// Notify blocked thread that buffer is full
-		printf("Buffer is full!\n");
 		full.notify_one();
 	}
 	//unlock mutex
@@ -133,9 +132,6 @@ Buffer::clear()
 	// before returning the buffer
 	Mavlink_Message_Buffers *data = new Mavlink_Message_Buffers;
 	*data = input_buffer;
-
-	printf("Buffer has been emptied!\n");
-	printf("Buffer Counter: %d\n", buffer_counter);
 	
 	// Empty buffer
 	input_buffer.clear_buffers();

@@ -12,7 +12,6 @@
 #include <string.h>
 #include <array>
 
-using std::string;
 using namespace std;
 
 #include "buffer.h"

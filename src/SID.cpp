@@ -44,9 +44,7 @@ compute_thread()
 		{
 			log_buffer_to_csv(data, filename);
 		}
-		printf("Sindy is thinking...\n");
 		usleep(5000000);
-		printf("Sindy is done...\n");
 	}
 	compute_status = false;
 
