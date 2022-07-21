@@ -150,7 +150,8 @@ void align_time_series(std::list<mavlink_global_position_int_t> &global_position
 {
 	std::list<mavlink_global_position_int_t>::iterator it = global_position_int.end();
     mavlink_global_position_int_t empty_global_position;
-    init_global_position_ned(empty_global_position);
+    init_global_position_int(empty_global_position);
+
     //Add zeros from end of list to the beginning
 	while(it != global_position_int.begin())
 	{
@@ -171,6 +172,7 @@ void align_time_series(std::list<mavlink_highres_imu_t> &highres_imu, uint64_t f
 {
 	std::list<mavlink_highres_imu_t>::iterator it = highres_imu.end();
     mavlink_highres_imu_t empty_highres_imu;
+    init_highres_imu(empty_highres_imu);
 
     //Add zeros from end of list to the beginning
 	while(it != highres_imu.begin())
@@ -192,6 +194,7 @@ void align_time_series(std::list<mavlink_attitude_t> &attitude, uint64_t first_s
 {
 	std::list<mavlink_attitude_t>::iterator it = attitude.end();
     mavlink_attitude_t empty_attitude;
+    init_attitude(empty_attitude);
 
     //Add zeros from end of list to the beginning
 	while(it != attitude.begin())

@@ -910,6 +910,74 @@ write_thread(void)
 
 // End Autopilot_Interface
 
+//Mavlink struct helper functions
+
+// Mavlink struct initialization helper functions
+void init_local_position_ned(mavlink_local_position_ned_t &local_position)
+{
+	local_position.time_boot_ms = 0;
+	local_position.vx = 0;
+	local_position.vy = 0;
+	local_position.vz = 0;
+	local_position.x = 0;
+	local_position.y = 0;
+	local_position.z = 0;
+}
+
+void init_global_position_int(mavlink_global_position_int_t &global_position)
+{
+	global_position.alt = 0;
+	global_position.hdg = 0;
+	global_position.lat = 0;
+	global_position.lon = 0;
+	global_position.relative_alt = 0;
+	global_position.time_boot_ms = 0;
+	global_position.vx = 0;
+	global_position.vy = 0;
+	global_position.vz = 0;
+}
+
+void init_highres_imu(mavlink_highres_imu_t &highres_imu)
+{
+	highres_imu.abs_pressure = 0;
+	highres_imu.diff_pressure = 0;
+	//highres_imu.fields_updated = 0;
+	//highres_imu.id = 0;
+	highres_imu.pressure_alt = 0;
+	highres_imu.temperature = 0;
+	highres_imu.time_usec = 0;
+	highres_imu.xacc = 0;
+	highres_imu.xgyro = 0;
+	highres_imu.xmag = 0;
+	highres_imu.yacc = 0;
+	highres_imu.ygyro = 0;
+	highres_imu.ymag = 0;
+	highres_imu.zacc = 0;
+	highres_imu.zgyro = 0;
+	highres_imu.zmag = 0;
+}
+
+void init_attitude(mavlink_attitude_t &attitude)
+{
+	attitude.pitch = 0;
+	attitude.pitchspeed = 0;
+	attitude.roll = 0;
+	attitude.rollspeed = 0;
+	attitude.time_boot_ms = 0;
+	attitude.yaw = 0;
+	attitude.yawspeed = 0;
+}
+
+void init_actuator_status(mavlink_actuator_output_status_t &actuator_status)
+{
+	actuator_status.active = 0;
+	actuator_status.time_usec = 0;
+	int size = sizeof(actuator_status.actuator)/sizeof(float);
+	for(int i = 0; i < size; i++)
+	{
+		actuator_status.actuator[i] = 0;
+	}
+}
 
 // ------------------------------------------------------------------------------
 //  Pthread Starter Helper Functions
