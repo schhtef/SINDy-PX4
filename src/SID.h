@@ -45,6 +45,7 @@ public:
     void start();
     void stop();
     void handle_quit(int sig);
+    void interpolate(Mavlink_Message_Buffers data);
 
     bool compute_status;
     bool disarmed;

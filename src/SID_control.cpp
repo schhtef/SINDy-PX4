@@ -218,6 +218,7 @@ commands(Autopilot_Interface &api, SID &SINDy, bool autotakeoff, string logfile_
 	//Request mavlink streams in addition to defaults
 
 	// Prepare command for setting message interval
+	// TODO put command generation into helper function
 	mavlink_command_int_t com = { 0 };
 	com.target_system    = api.system_id; //Companion system id
 	com.target_component = api.autopilot_id; //Autopilot system id
