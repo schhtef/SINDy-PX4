@@ -27,6 +27,17 @@ void log_buffer_to_csv(Mavlink_Message_Buffers buffer, string filename)
     header += "Actuator Output Status Time us, Active actuators\n";
     myfile << header;
 
+    std::list<mavlink_local_position_ned_t>::iterator local_position_iterator = buffer.buffered_local_position_ned.begin();
+    std::list<mavlink_global_position_int_t>::iterator global_position_iterator = buffer.buffered_global_position_int.begin();
+    std::list<mavlink_highres_imu_t>::iterator imu_iterator = buffer.buffered_highres_imu.begin();
+    std::list<mavlink_attitude_t>::iterator attitude_iterator = buffer.buffered_attitude.begin();
+    std::list<mavlink_actuator_output_status_t>::iterator actuator_iterator = buffer.buffered_actuator_status.begin();
+/*
+    while(local_position_iterator != buffer.buffered_local_position_ned.end())
+    {
+
+    }
+
     for(int i = 0; i < max_length; i++)
     {
         string row;
@@ -38,13 +49,13 @@ void log_buffer_to_csv(Mavlink_Message_Buffers buffer, string filename)
         else
         {
             //append each element to the row
-            row += to_string(buffer.buffered_attitude.at(i).time_boot_ms) + ",";
-            row += to_string(buffer.buffered_attitude.at(i).pitch) + ",";
-            row += to_string(buffer.buffered_attitude.at(i).pitchspeed) + ",";
-            row += to_string(buffer.buffered_attitude.at(i).roll) + ",";
-            row += to_string(buffer.buffered_attitude.at(i).rollspeed) + ",";
-            row += to_string(buffer.buffered_attitude.at(i).yaw) + ",";
-            row += to_string(buffer.buffered_attitude.at(i).yawspeed) + ",";
+            row += to_string((*buffer.buffered_attitude.begin()).time_boot_ms) + ",";
+            row += to_string((*buffer.buffered_attitude.begin().pitch) + ",";
+            row += to_string((*buffer.buffered_attitude.begin()).pitchspeed) + ",";
+            row += to_string((*buffer.buffered_attitude.begin()).roll) + ",";
+            row += to_string((*buffer.buffered_attitude.begin()).rollspeed) + ",";
+            row += to_string((*buffer.buffered_attitude.begin()).yaw) + ",";
+            row += to_string((*buffer.buffered_attitude.begin()).yawspeed) + ",";
         }
 
         if(i >= buffer.buffered_global_position_int.size())
@@ -54,15 +65,15 @@ void log_buffer_to_csv(Mavlink_Message_Buffers buffer, string filename)
         }
         else
         {
-            row += to_string(buffer.buffered_global_position_int.at(i).time_boot_ms) + ",";
-            row += to_string(buffer.buffered_global_position_int.at(i).alt) + ",";
-            row += to_string(buffer.buffered_global_position_int.at(i).hdg) + ",";
-            row += to_string(buffer.buffered_global_position_int.at(i).lat) + ",";
-            row += to_string(buffer.buffered_global_position_int.at(i).lon) + ",";
-            row += to_string(buffer.buffered_global_position_int.at(i).relative_alt) + ",";
-            row += to_string(buffer.buffered_global_position_int.at(i).vx) + ",";
-            row += to_string(buffer.buffered_global_position_int.at(i).vy) + ",";
-            row += to_string(buffer.buffered_global_position_int.at(i).vz) + ",";
+            row += to_string((*buffer.buffered_global_position_int.begin()).time_boot_ms) + ",";
+            row += to_string((*buffer.buffered_global_position_int.begin()).alt) + ",";
+            row += to_string((*buffer.buffered_global_position_int.begin()).hdg) + ",";
+            row += to_string((*buffer.buffered_global_position_int.begin()).lat) + ",";
+            row += to_string((*buffer.buffered_global_position_int.begin()).lon) + ",";
+            row += to_string((*buffer.buffered_global_position_int.begin()).relative_alt) + ",";
+            row += to_string((*buffer.buffered_global_position_int.begin()).vx) + ",";
+            row += to_string((*buffer.buffered_global_position_int.begin()).vy) + ",";
+            row += to_string((*buffer.buffered_global_position_int.begin()).vz) + ",";
         }
 
         if(i >= buffer.buffered_highres_imu.size())
@@ -72,11 +83,11 @@ void log_buffer_to_csv(Mavlink_Message_Buffers buffer, string filename)
         }
         else
         {
-            row += to_string(buffer.buffered_highres_imu.at(i).time_usec) + ",";
-            row += to_string(buffer.buffered_highres_imu.at(i).xacc) + ",";
-            row += to_string(buffer.buffered_highres_imu.at(i).yacc) + ",";
-            row += to_string(buffer.buffered_highres_imu.at(i).xgyro) + ",";
-            row += to_string(buffer.buffered_highres_imu.at(i).ygyro) + ",";
+            row += to_string((*buffer.buffered_highres_imu.begin()).time_usec) + ",";
+            row += to_string((*buffer.buffered_highres_imu.begin()).xacc) + ",";
+            row += to_string((*buffer.buffered_highres_imu.begin()).yacc) + ",";
+            row += to_string((*buffer.buffered_highres_imu.begin()).xgyro) + ",";
+            row += to_string((*buffer.buffered_highres_imu.begin()).ygyro) + ",";
         }
 
         if(i >= buffer.buffered_local_position_ned.size())
@@ -86,13 +97,13 @@ void log_buffer_to_csv(Mavlink_Message_Buffers buffer, string filename)
         }
         else
         {
-            row += to_string(buffer.buffered_local_position_ned.at(i).time_boot_ms) + ",";
-            row += to_string(buffer.buffered_local_position_ned.at(i).vx) + ",";
-            row += to_string(buffer.buffered_local_position_ned.at(i).vy) + ",";
-            row += to_string(buffer.buffered_local_position_ned.at(i).vz) + ",";
-            row += to_string(buffer.buffered_local_position_ned.at(i).x) + ",";
-            row += to_string(buffer.buffered_local_position_ned.at(i).y) + ",";
-            row += to_string(buffer.buffered_local_position_ned.at(i).z) + "\n";
+            row += to_string((*buffer.buffered_local_position_ned.begin()).time_boot_ms) + ",";
+            row += to_string((*buffer.buffered_local_position_ned.begin()).vx) + ",";
+            row += to_string((*buffer.buffered_local_position_ned.begin()).vy) + ",";
+            row += to_string((*buffer.buffered_local_position_ned.begin()).vz) + ",";
+            row += to_string((*buffer.buffered_local_position_ned.begin()).x) + ",";
+            row += to_string((*buffer.buffered_local_position_ned.begin()).y) + ",";
+            row += to_string((*buffer.buffered_local_position_ned.begin()).z) + "\n";
         }
 
         if(i >= buffer.buffered_actuator_status.size())
@@ -102,12 +113,13 @@ void log_buffer_to_csv(Mavlink_Message_Buffers buffer, string filename)
         }
         else
         {
-            row += to_string(buffer.buffered_actuator_status.at(i).time_usec) + ",";
-            row += to_string(buffer.buffered_actuator_status.at(i).active) + ",";
+            row += to_string((*buffer.buffered_actuator_status.begin()).time_usec) + ",";
+            row += to_string((*buffer.buffered_actuator_status.begin()).active) + ",";
             // TODO: Add logic to determine which actuators to log
         }
         myfile << row;
     }
+    */
     myfile.close();
     return;
 }
