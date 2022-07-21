@@ -41,11 +41,9 @@ public:
     ~SID();
 
     void compute_thread();
-    void interpolate();
     void start();
     void stop();
     void handle_quit(int sig);
-    void interpolate(Mavlink_Message_Buffers data);
 
     bool compute_status;
     bool disarmed;

@@ -324,6 +324,7 @@ read_messages()
 					mavlink_msg_global_position_int_decode(&message, &(current_messages.global_position_int));
 					current_messages.time_stamps.global_position_int = get_time_usec();
 					this_timestamps.global_position_int = current_messages.time_stamps.global_position_int;
+					input_buffer->insert(message);
 					break;
 				}
 
