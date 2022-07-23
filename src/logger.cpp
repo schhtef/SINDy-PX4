@@ -29,15 +29,52 @@ void log_buffer_to_csv(Mavlink_Message_Buffers buffer, string filename)
 
     std::list<mavlink_local_position_ned_t>::iterator local_position_iterator = buffer.buffered_local_position_ned.begin();
     std::list<mavlink_global_position_int_t>::iterator global_position_iterator = buffer.buffered_global_position_int.begin();
-    std::list<mavlink_highres_imu_t>::iterator imu_iterator = buffer.buffered_highres_imu.begin();
+    std::list<mavlink_highres_imu_t>::iterator highres_imu_iterator = buffer.buffered_highres_imu.begin();
     std::list<mavlink_attitude_t>::iterator attitude_iterator = buffer.buffered_attitude.begin();
     std::list<mavlink_actuator_output_status_t>::iterator actuator_iterator = buffer.buffered_actuator_status.begin();
-/*
+    
+    string row;
+
     while(local_position_iterator != buffer.buffered_local_position_ned.end())
     {
+        row += to_string((*attitude_iterator).time_boot_ms) + ",";
+        row += to_string((*attitude_iterator).pitch) + ",";
+        row += to_string((*attitude_iterator).pitchspeed) + ",";
+        row += to_string((*attitude_iterator).roll) + ",";
+        row += to_string((*attitude_iterator).rollspeed) + ",";
+        row += to_string((*attitude_iterator).yaw) + ",";
+        row += to_string((*attitude_iterator).yawspeed) + ",";
+        attitude_iterator++;
 
+        row += to_string((*global_position_iterator).time_boot_ms) + ",";
+        row += to_string((*global_position_iterator).alt) + ",";
+        row += to_string((*global_position_iterator).hdg) + ",";
+        row += to_string((*global_position_iterator).lat) + ",";
+        row += to_string((*global_position_iterator).lon) + ",";
+        row += to_string((*global_position_iterator).relative_alt) + ",";
+        row += to_string((*global_position_iterator).vx) + ",";
+        row += to_string((*global_position_iterator).vy) + ",";
+        row += to_string((*global_position_iterator).vz) + ",";
+        global_position_iterator++;
+
+        row += to_string((*highres_imu_iterator).time_usec) + ",";
+        row += to_string((*highres_imu_iterator).xacc) + ",";
+        row += to_string((*highres_imu_iterator).yacc) + ",";
+        row += to_string((*highres_imu_iterator).xgyro) + ",";
+        row += to_string((*highres_imu_iterator).ygyro) + ",";
+        highres_imu_iterator++;
+
+        row += to_string((*local_position_iterator).time_boot_ms) + ",";
+        row += to_string((*local_position_iterator).vx) + ",";
+        row += to_string((*local_position_iterator).vy) + ",";
+        row += to_string((*local_position_iterator).vz) + ",";
+        row += to_string((*local_position_iterator).x) + ",";
+        row += to_string((*local_position_iterator).y) + ",";
+        row += to_string((*local_position_iterator).z) + "\n";
+        local_position_iterator++;
+        myfile << row;
     }
-
+/*
     for(int i = 0; i < max_length; i++)
     {
         string row;

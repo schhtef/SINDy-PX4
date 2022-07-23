@@ -144,6 +144,15 @@ void align_time_series(std::list<mavlink_local_position_ned_t> &local_position_n
     //insert number of interpolants into the list
     empty_local_position.time_boot_ms = ((*it).time_boot_ms)-1; //Inserting behind current element, so previous ms is needed 
     local_position_ned.insert(it, number_of_interpolants, empty_local_position);
+
+    // Extend true end of list to the common time completion
+    it = local_position_ned.end();
+    number_of_interpolants = (last_sample_time - (*it).time_boot_ms);
+    for(int i = 0; i < number_of_interpolants; i++)
+    {
+        empty_local_position.time_boot_ms = ((*it).time_boot_ms)+i; //Inserting ahead of current element, so next ms is needed
+        local_position_ned.push_back(empty_local_position);
+    }    
 }
 
 void align_time_series(std::list<mavlink_global_position_int_t> &global_position_int, uint64_t first_sample_time, uint64_t last_sample_time)
@@ -166,6 +175,15 @@ void align_time_series(std::list<mavlink_global_position_int_t> &global_position
     //insert number of interpolants into the list
     empty_global_position.time_boot_ms = ((*it).time_boot_ms)-1; //Inserting behind current element, so previous ms is needed 
     global_position_int.insert(it, number_of_interpolants, empty_global_position);
+
+    // Extend true end of list to the common time completion
+    it = global_position_int.end();
+    number_of_interpolants = (last_sample_time - (*it).time_boot_ms);
+    for(int i = 0; i < number_of_interpolants; i++)
+    {
+        empty_global_position.time_boot_ms = ((*it).time_boot_ms)+i; //Inserting ahead of current element, so next ms is needed
+        global_position_int.push_back(empty_global_position);
+    } 
 }
 
 void align_time_series(std::list<mavlink_highres_imu_t> &highres_imu, uint64_t first_sample_time, uint64_t last_sample_time)
@@ -188,6 +206,15 @@ void align_time_series(std::list<mavlink_highres_imu_t> &highres_imu, uint64_t f
     //insert number of interpolants into the list
     empty_highres_imu.time_usec = ((*it).time_usec)-1000; //Inserting behind current element, so previous ms is needed 
     highres_imu.insert(it, number_of_interpolants, empty_highres_imu);
+
+    // Extend true end of list to the common time completion
+    it = highres_imu.end();
+    number_of_interpolants = (last_sample_time - (*it).time_usec/1000);
+    for(int i = 0; i < number_of_interpolants; i++)
+    {
+        empty_highres_imu.time_usec = ((*it).time_usec)+1000*i; //Inserting ahead of current element, so next ms is needed
+        highres_imu.push_back(empty_highres_imu);
+    }
 }
 
 void align_time_series(std::list<mavlink_attitude_t> &attitude, uint64_t first_sample_time, uint64_t last_sample_time)
@@ -210,4 +237,13 @@ void align_time_series(std::list<mavlink_attitude_t> &attitude, uint64_t first_s
     //insert number of interpolants into the list
     empty_attitude.time_boot_ms = ((*it).time_boot_ms)-1; //Inserting behind current element, so previous ms is needed 
     attitude.insert(it, number_of_interpolants, empty_attitude);
+
+    // Extend true end of list to the common time completion
+    it = attitude.end();
+    number_of_interpolants = (last_sample_time - (*it).time_boot_ms);
+    for(int i = 0; i < number_of_interpolants; i++)
+    {
+        empty_attitude.time_boot_ms = ((*it).time_boot_ms)+i; //Inserting ahead of current element, so next ms is needed
+        attitude.push_back(empty_attitude);
+    }
 }
