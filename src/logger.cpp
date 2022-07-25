@@ -67,6 +67,7 @@ void log_buffer_to_csv(Telemetry telemetry, string filename)
         local_position_iterator++;
 */
         myfile << row;
+        row = "";
     }
     myfile.close();
     return;

@@ -52,7 +52,7 @@ struct Telemetry{
 Telemetry interpolate(Mavlink_Message_Buffers &data, uint32_t sample_rate);
 
 template <typename T, typename U>
-void lerp_vector(std::vector<T> &y, std::vector<U> &x, std::vector<T> &y_result, std::vector<U> &x_result, U start, U end, uint32_t sample_rate);
+void lerp_vector(std::vector<T> y, std::vector<U> x, std::vector<T> &y_result, std::vector<U> &x_result, U start, U end, uint32_t sample_rate);
 
 template <typename T, typename U>
 T linear_interp(T y0, T y1, U x0, U x1, U x);
