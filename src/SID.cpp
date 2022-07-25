@@ -39,12 +39,13 @@ compute_thread()
     while ( ! time_to_exit )
 	{
         data = input_buffer->clear();
-		interpolate(data); // Bring data to a common timebase and interpolate it
+		Telemetry sindy_input = interpolate(data, 100); // Resample input buffer and interpolate
+		
 		// might cause a race condition where the SINDy thread checks disarmed just before the main thread
 		// sets the disarmed flag. Worst case scenario the SINDy thread logs one more buffer
 		if(!disarmed)
 		{
-			log_buffer_to_csv(data, filename);
+			log_buffer_to_csv(sindy_input, filename);
 		}
 		usleep(5000000);
 	}

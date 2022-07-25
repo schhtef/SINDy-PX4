@@ -25,6 +25,8 @@
 
 using namespace std;
 
+
+
 // ----------------------------------------------------------------------------------
 //   System Identification Class
 // ----------------------------------------------------------------------------------
@@ -48,6 +50,7 @@ public:
     bool compute_status;
     bool disarmed;
     string filename;
+    uint32_t resampling_rate;
 };
 
 #endif
