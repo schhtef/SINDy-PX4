@@ -219,13 +219,13 @@ commands(Autopilot_Interface &api, SID &SINDy, bool autotakeoff, string logfile_
 
 	// Prepare command for setting message interval
 	// TODO put command generation into helper function
-	/*
+	
 	mavlink_command_int_t com = { 0 };
 	com.target_system    = api.system_id; //Companion system id
 	com.target_component = api.autopilot_id; //Autopilot system id
 	com.command          = MAV_CMD_SET_MESSAGE_INTERVAL; //Command to send
 	com.param1           = MAVLINK_MSG_ID_ACTUATOR_OUTPUT_STATUS; //Requested Message
-	com.param2           = 100000; //Message interval
+	com.param2           = 100000; //Default message interval
 
 	// Encode
 	mavlink_message_t message;
@@ -238,20 +238,18 @@ commands(Autopilot_Interface &api, SID &SINDy, bool autotakeoff, string logfile_
 	{
 		fprintf(stderr, "Failed to set message interval\n");
 	}
-	*/
-
-	mavlink_command_int_t com = { 0 };
+	
+	com = { 0 };
 	com.target_system    = api.system_id; //Companion system id
 	com.target_component = api.autopilot_id; //Autopilot system id
 	com.command          = MAV_CMD_SET_MESSAGE_INTERVAL; //Command to send
 	com.param1           = MAVLINK_MSG_ID_GLOBAL_POSITION_INT; //Requested Message
-	com.param2           = 10000; //Message interval, 10ms
+	com.param2           = 100000; //Default message interval
 
-	mavlink_message_t message;
 	mavlink_msg_command_int_encode(api.system_id, api.companion_id, &message, &com);
 
 	// Send the message
-	int len = api.write_message(message);
+	len = api.write_message(message);
 
 	if(!len)
 	{
@@ -278,7 +276,7 @@ commands(Autopilot_Interface &api, SID &SINDy, bool autotakeoff, string logfile_
 				{
 					system_state = FLIGHT_LOG_STATE;
 					flights_since_reboot++;
-					SINDy.filename = logfile_directory + "Flight Number: " + to_string(flights_since_reboot);
+					SINDy.filename = logfile_directory + "Flight Number: " + to_string(flights_since_reboot) + ".csv";
 					printf("Autopilot armed. Starting system identification for flight number %d\n", flights_since_reboot);
 					SINDy.disarmed = false;
 				}

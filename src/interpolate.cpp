@@ -21,229 +21,189 @@
  * Interpolate the samples in Mavlink Message Buffer
  *
  * @param data Struct containing vectors of mavlink messages
+ * @param sample_rate rate for resampling data buffer
  * @return void
  */
-void interpolate(Mavlink_Message_Buffers &data)
-{ 
-	// Find earliest sample, remember the time. This will be the time origin
-    std::list<mavlink_actuator_output_status_t>::iterator it = data.buffered_actuator_status.begin();
+Telemetry interpolate(Mavlink_Message_Buffers &data, uint32_t sample_rate)
+{     
+    // Find latest first sample, remember the time. This will be the time origin
+    // Avoids extrapolating data at the beginning
 
-	uint64_t first_sample_time = (*it).time_usec/1000; //Convert to ms
+ 	uint32_t first_sample_time = data.buffered_actuator_status.front().time_usec/1000; //Convert to ms
 
-	// Use generic pointer to point to the vector with first sample
-	void *first_sample_vector = &data.buffered_actuator_status; 
-
-	if((*data.buffered_attitude.begin()).time_boot_ms < first_sample_time)
+	if((data.buffered_attitude.front()).time_boot_ms > first_sample_time)
 	{
-		first_sample_time = (*data.buffered_attitude.begin()).time_boot_ms;
-		first_sample_vector = &data.buffered_attitude;
+		first_sample_time = (data.buffered_attitude.front()).time_boot_ms;
 	}
-	if((*data.buffered_global_position_int.begin()).time_boot_ms < first_sample_time)
+	if((data.buffered_global_position_int.front()).time_boot_ms > first_sample_time)
 	{
-		first_sample_time = (*data.buffered_global_position_int.begin()).time_boot_ms;
-		first_sample_vector = &data.buffered_global_position_int;
+		first_sample_time = (data.buffered_global_position_int.front()).time_boot_ms;
 	}
-	if((*data.buffered_highres_imu.begin()).time_usec/1000 < first_sample_time) //Convert to ms
+	if((data.buffered_highres_imu.front()).time_usec/1000 > first_sample_time) //Convert to ms
 	{
-		first_sample_time = (*data.buffered_highres_imu.begin()).time_usec/1000;
-		first_sample_vector = &data.buffered_highres_imu;
+		first_sample_time = (data.buffered_highres_imu.front()).time_usec/1000;
 	}
-	if((*data.buffered_local_position_ned.begin()).time_boot_ms < first_sample_time)
+	if((data.buffered_local_position_ned.front()).time_boot_ms > first_sample_time)
 	{
-		first_sample_time = (*data.buffered_local_position_ned.begin()).time_boot_ms;
-		first_sample_vector = &data.buffered_local_position_ned;
+		first_sample_time = (data.buffered_local_position_ned.front()).time_boot_ms;
 	}
 
-    // Find the buffer with the last collected sample, all buffers will be zero padded to this time
-    it = data.buffered_actuator_status.end();
- 	uint64_t last_sample_time = (*it).time_usec/1000; //Convert to ms
+    // Find the buffer with the earliest, last sample.
+    // Avoids extrapolating data at the end
+ 	uint32_t last_sample_time = data.buffered_actuator_status.back().time_usec/1000; //Convert to ms
 
-	if((*data.buffered_attitude.end()).time_boot_ms > last_sample_time)
+	if(data.buffered_attitude.back().time_boot_ms < last_sample_time)
 	{
-		last_sample_time = (*data.buffered_attitude.end()).time_boot_ms;
-		first_sample_vector = &data.buffered_attitude;
+		last_sample_time = data.buffered_attitude.back().time_boot_ms;
 	}
-	if((*data.buffered_global_position_int.end()).time_boot_ms > last_sample_time)
+	if(data.buffered_global_position_int.back().time_boot_ms < last_sample_time)
 	{
-		last_sample_time = (*data.buffered_global_position_int.end()).time_boot_ms;
-		first_sample_vector = &data.buffered_global_position_int;
+		last_sample_time = data.buffered_global_position_int.back().time_boot_ms;
 	}
-	if((*data.buffered_highres_imu.end()).time_usec/1000 > last_sample_time) //Convert to ms
+	if(data.buffered_highres_imu.back().time_usec/1000 < last_sample_time) //Convert to ms
 	{
-		last_sample_time = (*data.buffered_highres_imu.end()).time_usec/1000;
-		first_sample_vector = &data.buffered_highres_imu;
+		last_sample_time = data.buffered_highres_imu.back().time_usec/1000;
 	}
-	if((*data.buffered_local_position_ned.end()).time_boot_ms > last_sample_time)
+	if(data.buffered_local_position_ned.back().time_boot_ms < last_sample_time)
 	{
-		last_sample_time = (*data.buffered_local_position_ned.end()).time_boot_ms;
-		first_sample_vector = &data.buffered_local_position_ned;
+		last_sample_time = data.buffered_local_position_ned.back().time_boot_ms;
 	}
 
-	// For each vector, find difference in time between consecutive samples
-	// Calculate the number of zeros to add in, (time in ms)/(time resolution in ms)
-	// Pad with zeros
-	align_time_series(data.buffered_actuator_status, first_sample_time, last_sample_time);
-    align_time_series(data.buffered_local_position_ned, first_sample_time, last_sample_time);
-    align_time_series(data.buffered_global_position_int, first_sample_time, last_sample_time);
-	align_time_series(data.buffered_highres_imu, first_sample_time, last_sample_time);
-	align_time_series(data.buffered_attitude, first_sample_time, last_sample_time);
-}
+    // Separate vectors of mavlink structs into vectors containing each data source
+    std::vector<mavlink_attitude_t>::iterator attitude_iterator = data.buffered_attitude.begin();
+    Telemetry uninterpolated_data;
+    Telemetry interpolated_data;
 
-void align_time_series(std::list<mavlink_actuator_output_status_t> &actuator_output_status, uint64_t first_sample_time, uint64_t last_sample_time)
-{
-	std::list<mavlink_actuator_output_status_t>::iterator it = actuator_output_status.end();
-    mavlink_actuator_output_status_t empty_actuator_status;
-    init_actuator_status(empty_actuator_status);
-
-    // Add zeros between samples from end of list to the beginning
-	while(it != actuator_output_status.begin())
-	{
-		// Currently spacing is 1ms, divide result by desired timebase
-		uint64_t number_of_interpolants = ((*it).time_usec/1000 - (*(it--)).time_usec/1000); 
-		// insert number of interpolants into the list
-        empty_actuator_status.time_usec = ((*it).time_usec)-1000; //Inserting behind current element, so previous ms is needed 
-        actuator_output_status.insert(it, number_of_interpolants, empty_actuator_status);
-	}
-
-    // Extend true beginning of list to the common time origin, if this list is the time origin, number of interpolants is 0 
-    uint64_t number_of_interpolants = ((*it).time_usec/1000 - first_sample_time); 
-    // insert number of interpolants into the list
-    for(int i = 0; i < number_of_interpolants; i++)
+    while(attitude_iterator != data.buffered_attitude.end())
     {
-        empty_actuator_status.time_usec = ((*it).time_usec)-1000*i; //Inserting behind current element, so previous ms is needed
-        actuator_output_status.insert(it, empty_actuator_status);
+        uninterpolated_data.time_boot_ms_attitude.push_back((*attitude_iterator).time_boot_ms);
+        uninterpolated_data.roll.push_back((*attitude_iterator).roll);
+        uninterpolated_data.pitch.push_back((*attitude_iterator).pitch);
+        uninterpolated_data.yaw.push_back((*attitude_iterator).yaw);
+        uninterpolated_data.rollspeed.push_back((*attitude_iterator).rollspeed);
+        uninterpolated_data.pitchspeed.push_back((*attitude_iterator).pitchspeed);
+        uninterpolated_data.yawspeed.push_back((*attitude_iterator).yawspeed);
+        attitude_iterator++;
     }
- 
-    // Extend true end of list to the common time completion
-    it = actuator_output_status.end();
-    number_of_interpolants = (last_sample_time - (*it).time_usec/1000);
-    for(int i = 0; i < number_of_interpolants; i++)
+
+    lerp_vector(uninterpolated_data.roll, uninterpolated_data.time_boot_ms_attitude, interpolated_data.roll, interpolated_data.time_boot_ms_attitude, first_sample_time, last_sample_time, sample_rate);
+    interpolated_data.time_boot_ms_attitude.clear();
+    lerp_vector(uninterpolated_data.pitch, uninterpolated_data.time_boot_ms_attitude, interpolated_data.pitch, interpolated_data.time_boot_ms_attitude, first_sample_time, last_sample_time, sample_rate);
+    interpolated_data.time_boot_ms_attitude.clear();
+    lerp_vector(uninterpolated_data.yaw, uninterpolated_data.time_boot_ms_attitude, interpolated_data.yaw, interpolated_data.time_boot_ms_attitude, first_sample_time, last_sample_time, sample_rate);
+    interpolated_data.time_boot_ms_attitude.clear();
+    lerp_vector(uninterpolated_data.rollspeed, uninterpolated_data.time_boot_ms_attitude, interpolated_data.rollspeed, interpolated_data.time_boot_ms_attitude, first_sample_time, last_sample_time, sample_rate);
+    interpolated_data.time_boot_ms_attitude.clear();
+    lerp_vector(uninterpolated_data.pitchspeed, uninterpolated_data.time_boot_ms_attitude, interpolated_data.pitchspeed, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
+    interpolated_data.time_boot_ms_attitude.clear();
+    lerp_vector(uninterpolated_data.yawspeed, uninterpolated_data.time_boot_ms_attitude, interpolated_data.yawspeed, interpolated_data.time_boot_ms_attitude, first_sample_time, last_sample_time, sample_rate);
+
+    // Create vectors from global position
+    std::vector<mavlink_global_position_int_t>::iterator global_position_iterator = data.buffered_global_position_int.begin();
+
+    while(global_position_iterator != data.buffered_global_position_int.end())
     {
-        empty_actuator_status.time_usec = ((*it).time_usec)+1000*i; //Inserting ahead of current element, so next ms is needed
-        actuator_output_status.push_back(empty_actuator_status);
+        uninterpolated_data.time_boot_ms_global.push_back((*global_position_iterator).time_boot_ms);
+        uninterpolated_data.lat.push_back((*global_position_iterator).lat);
+        uninterpolated_data.lon.push_back((*global_position_iterator).lon);
+        uninterpolated_data.alt.push_back((*global_position_iterator).alt);
+        uninterpolated_data.relative_alt.push_back((*global_position_iterator).relative_alt);
+        uninterpolated_data.vx.push_back((*global_position_iterator).vx);
+        uninterpolated_data.vy.push_back((*global_position_iterator).vy);
+        uninterpolated_data.vz.push_back((*global_position_iterator).vz);
+        uninterpolated_data.hdg.push_back((*global_position_iterator).hdg);
+        global_position_iterator++;
     }
+
+    lerp_vector(uninterpolated_data.lat, uninterpolated_data.time_boot_ms_global, interpolated_data.lat, interpolated_data.time_boot_ms_global, first_sample_time, last_sample_time, sample_rate);
+    interpolated_data.time_boot_ms_global.clear(); // There needs to be a better way to handle this
+    lerp_vector(uninterpolated_data.lon, uninterpolated_data.time_boot_ms_global, interpolated_data.lon, interpolated_data.time_boot_ms_global, first_sample_time, last_sample_time, sample_rate);
+    interpolated_data.time_boot_ms_global.clear();
+    lerp_vector(uninterpolated_data.alt, uninterpolated_data.time_boot_ms_global, interpolated_data.alt, interpolated_data.time_boot_ms_global, first_sample_time, last_sample_time, sample_rate);
+    interpolated_data.time_boot_ms_global.clear();
+    lerp_vector(uninterpolated_data.relative_alt, uninterpolated_data.time_boot_ms_global, interpolated_data.relative_alt, interpolated_data.time_boot_ms_global, first_sample_time, last_sample_time, sample_rate);
+    interpolated_data.time_boot_ms_global.clear();
+    lerp_vector(uninterpolated_data.vx, uninterpolated_data.time_boot_ms_global, interpolated_data.vx, interpolated_data.time_boot_ms_global, first_sample_time, last_sample_time, sample_rate);
+    interpolated_data.time_boot_ms_global.clear();
+    lerp_vector(uninterpolated_data.vy, uninterpolated_data.time_boot_ms_global, interpolated_data.vy, interpolated_data.time_boot_ms_global, first_sample_time, last_sample_time, sample_rate);
+    interpolated_data.time_boot_ms_global.clear();
+    lerp_vector(uninterpolated_data.vz, uninterpolated_data.time_boot_ms_global, interpolated_data.vz, interpolated_data.time_boot_ms_global, first_sample_time, last_sample_time, sample_rate);
+    interpolated_data.time_boot_ms_global.clear();
+    lerp_vector(uninterpolated_data.hdg, uninterpolated_data.time_boot_ms_global, interpolated_data.hdg, interpolated_data.time_boot_ms_global, first_sample_time, last_sample_time, sample_rate);
+
+    return interpolated_data;
 }
 
-void align_time_series(std::list<mavlink_local_position_ned_t> &local_position_ned, uint64_t first_sample_time, uint64_t last_sample_time)
+
+template <typename T, typename U>
+void lerp_vector(std::vector<T> y, std::vector<U> x, std::vector<T> &y_result, std::vector<U> &x_result, U start, U end, uint32_t sample_rate)
 {
-	std::list<mavlink_local_position_ned_t>::iterator it = local_position_ned.end();
-    mavlink_local_position_ned_t empty_local_position;
-    init_local_position_ned(empty_local_position);
-
-    //Add zeros from end of list to the beginning
-	while(it != local_position_ned.begin())
-	{
-		//Currently spacing is 1ms, divide result by desired timebase
-		uint64_t number_of_interpolants = ((*it).time_boot_ms - (*(it--)).time_boot_ms); 
-		//insert number of interpolants into the list
-        empty_local_position.time_boot_ms = ((*it).time_boot_ms)-1; //Inserting behind current element, so previous ms is needed 
-        local_position_ned.insert(it, number_of_interpolants, empty_local_position);
-	}
-    //Extend true beginning of list to the common time origin, if this list is the time origin, number of interpolants is 0 
-    uint64_t number_of_interpolants = ((*it).time_boot_ms - first_sample_time); 
-    //insert number of interpolants into the list
-    empty_local_position.time_boot_ms = ((*it).time_boot_ms)-1; //Inserting behind current element, so previous ms is needed 
-    local_position_ned.insert(it, number_of_interpolants, empty_local_position);
-
-    // Extend true end of list to the common time completion
-    it = local_position_ned.end();
-    number_of_interpolants = (last_sample_time - (*it).time_boot_ms);
-    for(int i = 0; i < number_of_interpolants; i++)
+    if(x.size() != y.size())
     {
-        empty_local_position.time_boot_ms = ((*it).time_boot_ms)+i; //Inserting ahead of current element, so next ms is needed
-        local_position_ned.push_back(empty_local_position);
-    }    
-}
+        fprintf(stderr, "Caution: X and Y series are different sizes\n");
+    }
+    // Linearly interpolate local position from first_sample_time, if this vector has the first sample time,
+    // first interpolant will just be the first sample
+	typename std::vector<T>::iterator y_iterator = y.begin();
+	typename std::vector<U>::iterator x_iterator = x.begin();
+    y_iterator++;
+    x_iterator++;
 
-void align_time_series(std::list<mavlink_global_position_int_t> &global_position_int, uint64_t first_sample_time, uint64_t last_sample_time)
-{
-	std::list<mavlink_global_position_int_t>::iterator it = global_position_int.end();
-    mavlink_global_position_int_t empty_global_position;
-    init_global_position_int(empty_global_position);
+    double sample_period = 1/(float)sample_rate;
+    U interpolant_time = start;
+    // Outputs
+    //std::vector<T> y_result;
+    //std::vector<T> x_result;
+    // Loop variables
+    T y_interpolant;
+    U x_interpolant;
 
-    //Add zeros from end of list to the beginning
-	while(it != global_position_int.begin())
-	{
-		//Currently spacing is 1ms, divide result by desired timebase
-		uint64_t number_of_interpolants = ((*it).time_boot_ms - (*(it--)).time_boot_ms); 
-		//insert number of interpolants into the list
-        empty_global_position.time_boot_ms = ((*it).time_boot_ms)-1; //Inserting behind current element, so previous ms is needed 
-        global_position_int.insert(it, number_of_interpolants, empty_global_position);
-	}
-    //Extend true beginning of list to the common time origin, if this list is the time origin, number of interpolants is 0 
-    uint64_t number_of_interpolants = ((*it).time_boot_ms - first_sample_time); 
-    //insert number of interpolants into the list
-    empty_global_position.time_boot_ms = ((*it).time_boot_ms)-1; //Inserting behind current element, so previous ms is needed 
-    global_position_int.insert(it, number_of_interpolants, empty_global_position);
-
-    // Extend true end of list to the common time completion
-    it = global_position_int.end();
-    number_of_interpolants = (last_sample_time - (*it).time_boot_ms);
-    for(int i = 0; i < number_of_interpolants; i++)
+    // Find two consecutive samples which straddle start
+    // This ensures interpolation starts between the right samples.
+    while(!(*x_iterator >= start && *(x_iterator-1) <= start))
     {
-        empty_global_position.time_boot_ms = ((*it).time_boot_ms)+i; //Inserting ahead of current element, so next ms is needed
-        global_position_int.push_back(empty_global_position);
-    } 
-}
+        x_iterator++;
+        y_iterator++;
+    }
 
-void align_time_series(std::list<mavlink_highres_imu_t> &highres_imu, uint64_t first_sample_time, uint64_t last_sample_time)
-{
-	std::list<mavlink_highres_imu_t>::iterator it = highres_imu.end();
-    mavlink_highres_imu_t empty_highres_imu;
-    init_highres_imu(empty_highres_imu);
-
-    //Add zeros from end of list to the beginning
-	while(it != highres_imu.begin())
-	{
-		//Currently spacing is 1ms, divide result by desired timebase
-		uint64_t number_of_interpolants = ((*it).time_usec/1000 - (*(it--)).time_usec/1000); 
-		//insert number of interpolants into the list
-        empty_highres_imu.time_usec = ((*it).time_usec)-1000; //Inserting behind current element, so previous ms is needed 
-        highres_imu.insert(it, number_of_interpolants, empty_highres_imu);
-	}
-    //Extend true beginning of list to the common time origin, if this list is the time origin, number of interpolants is 0 
-    uint64_t number_of_interpolants = ((*it).time_usec/1000 - first_sample_time); 
-    //insert number of interpolants into the list
-    empty_highres_imu.time_usec = ((*it).time_usec)-1000; //Inserting behind current element, so previous ms is needed 
-    highres_imu.insert(it, number_of_interpolants, empty_highres_imu);
-
-    // Extend true end of list to the common time completion
-    it = highres_imu.end();
-    number_of_interpolants = (last_sample_time - (*it).time_usec/1000);
-    for(int i = 0; i < number_of_interpolants; i++)
+    // Interpolate until we reach the last sample time, or the end of the vector is reached, which is unexpected
+    while((y_iterator != y.end()) || (x_iterator != x.end()) || interpolant_time <= end)
     {
-        empty_highres_imu.time_usec = ((*it).time_usec)+1000*i; //Inserting ahead of current element, so next ms is needed
-        highres_imu.push_back(empty_highres_imu);
+        // Interpolate consecutive variables
+        x_interpolant = interpolant_time;
+        y_interpolant = linear_interp(*(y_iterator-1), (*y_iterator),*(x_iterator-1), (*x_iterator), interpolant_time);
+
+        // Push interpolated value into a new vector
+        y_result.push_back(y_interpolant);
+        x_result.push_back(x_interpolant);
+
+        // Increment interpolant time
+        interpolant_time = interpolant_time+(sample_period*1000);
+        // If interpolant time is greater than the next sample, increment the iterator
+        // If the interpolant time is equal, the next loop will just result in the true sample, no interpolation
+        if(interpolant_time > (*x_iterator))
+        {
+            y_iterator++;
+            x_iterator++;
+        }
+    }
+    // Sanity Checks
+    if(x_result.size() != y_result.size())
+    {
+        fprintf(stderr, "Caution: X and Y results are different sizes\n");
+    }
+    int x_size = x_result.size();
+    if(x_size != ((end-start)/1000)*sample_rate)
+    {
+        fprintf(stderr, "Caution: size of interpolated vector is different than expected. Expected: %u, Actual %d\n", ((end-start)/((U)1000)*sample_rate, x_size));
     }
 }
 
-void align_time_series(std::list<mavlink_attitude_t> &attitude, uint64_t first_sample_time, uint64_t last_sample_time)
+template <typename T, typename U>
+T linear_interp(T y0, T y1, U x0, U x1, U x)
 {
-	std::list<mavlink_attitude_t>::iterator it = attitude.end();
-    mavlink_attitude_t empty_attitude;
-    init_attitude(empty_attitude);
-
-    //Add zeros from end of list to the beginning
-	while(it != attitude.begin())
-	{
-		//Currently spacing is 1ms, divide result by desired timebase
-		uint64_t number_of_interpolants = ((*it).time_boot_ms - (*(it--)).time_boot_ms); 
-		//insert number of interpolants into the list
-        empty_attitude.time_boot_ms = ((*it).time_boot_ms)-1; //Inserting behind current element, so previous ms is needed 
-        attitude.insert(it, number_of_interpolants, empty_attitude);
-	}
-    //Extend true beginning of list to the common time origin, if this list is the time origin, number of interpolants is 0 
-    uint64_t number_of_interpolants = ((*it).time_boot_ms - first_sample_time); 
-    //insert number of interpolants into the list
-    empty_attitude.time_boot_ms = ((*it).time_boot_ms)-1; //Inserting behind current element, so previous ms is needed 
-    attitude.insert(it, number_of_interpolants, empty_attitude);
-
-    // Extend true end of list to the common time completion
-    it = attitude.end();
-    number_of_interpolants = (last_sample_time - (*it).time_boot_ms);
-    for(int i = 0; i < number_of_interpolants; i++)
-    {
-        empty_attitude.time_boot_ms = ((*it).time_boot_ms)+i; //Inserting ahead of current element, so next ms is needed
-        attitude.push_back(empty_attitude);
-    }
+    // Returns y0*(x1-x)/(x1-x0) + y1*(x-x0)/(x1-x0)
+    // Type casting with (T) to ensure output is of type T
+    T retval = y0*(((float)x1-(float)x)/((float)x1-(float)x0))+y1*(((float)x-(float)x0)/((float)x1-(float)x0));
+    return retval;
 }

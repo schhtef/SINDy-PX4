@@ -19,9 +19,10 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include "interpolate.h"
 
 using namespace std;
 
-void log_buffer_to_csv(Mavlink_Message_Buffers buffer, string filename);
+void log_buffer_to_csv(Telemetry telemetry, string filename);
 
 #endif

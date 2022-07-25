@@ -19,7 +19,7 @@
 #include <utility>
 #include <mutex>
 #include <condition_variable>
-#include <list>       // std::list
+#include <vector>       // std::vector
 #include <algorithm>    // std::copy
 
 using namespace std;
@@ -31,19 +31,19 @@ using namespace std;
 // Package the individual arrays into a struct
 struct Mavlink_Message_Buffers {
 	// Local Position
-	std::list<mavlink_local_position_ned_t> buffered_local_position_ned;
+	std::vector<mavlink_local_position_ned_t> buffered_local_position_ned;
 
 	// Global Position
-	std::list<mavlink_global_position_int_t> buffered_global_position_int;
+	std::vector<mavlink_global_position_int_t> buffered_global_position_int;
 
 	// HiRes IMU
-	std::list<mavlink_highres_imu_t> buffered_highres_imu;
+	std::vector<mavlink_highres_imu_t> buffered_highres_imu;
 
 	// Attitude
-	std::list<mavlink_attitude_t> buffered_attitude;
+	std::vector<mavlink_attitude_t> buffered_attitude;
 
 	// Actuator Setpoint
-	std::list<mavlink_actuator_output_status_t> buffered_actuator_status;
+	std::vector<mavlink_actuator_output_status_t> buffered_actuator_status;
 
     // erase all elements in each buffer
     void clear_buffers()
