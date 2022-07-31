@@ -13,7 +13,7 @@
 //   Includes
 // ------------------------------------------------------------------------------
 
-#include "SID.h"
+#include "system_identification.h"
 #include "interpolate.h"
 
 void* start_SID_compute_thread(void *args);
@@ -39,14 +39,15 @@ compute_thread()
     while ( ! time_to_exit )
 	{
         data = input_buffer->clear();
-		Telemetry sindy_input = interpolate(data, 500); // Resample input buffer and interpolate
+		Telemetry interpolated_telemetry = interpolate(data, 500); // Resample input buffer and interpolate
 		
 		// might cause a race condition where the SINDy thread checks disarmed just before the main thread
 		// sets the disarmed flag. Worst case scenario the SINDy thread logs one more buffer
 		if(!disarmed)
 		{
-			log_buffer_to_csv(sindy_input, filename);
+			log_buffer_to_csv(interpolated_telemetry, filename);
 		}
+		// Do SINDy here
 		usleep(5000000);
 	}
 	compute_status = false;

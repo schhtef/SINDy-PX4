@@ -149,7 +149,7 @@ void lerp_vector(std::vector<T> y, std::vector<U> x, std::vector<T> &y_result, s
     y_iterator++;
     x_iterator++;
 
-    double sample_period = 1/(float)sample_rate;
+    float sample_period = 1/(float)sample_rate;
     U interpolant_time = start;
     // Outputs
     //std::vector<T> y_result;
@@ -167,7 +167,7 @@ void lerp_vector(std::vector<T> y, std::vector<U> x, std::vector<T> &y_result, s
     }
 
     // Interpolate until we reach the last sample time, or the end of the vector is reached, which is unexpected
-    while((y_iterator != y.end()) || (x_iterator != x.end()) || interpolant_time <= end)
+    while((y_iterator != y.end()) && (x_iterator != x.end()) && (interpolant_time <= end))
     {
         // Interpolate consecutive variables
         x_interpolant = interpolant_time;

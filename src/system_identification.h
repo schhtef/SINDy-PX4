@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef SID_H_
-#define SID_H_
+#ifndef SYSTEM_IDENTIFICATION_H_
+#define SYSTEM_IDENTIFICATION_H_
 
 // ------------------------------------------------------------------------------
 //   Includes
