@@ -20,6 +20,7 @@
 #include "lsmr.h" // Least squares algorithm
 #include <vector>
 #include <iostream>
+#include <list>
 
 using namespace std;
 // ----------------------------------------------------------------------------------
@@ -35,7 +36,8 @@ public:
     ~SINDy();
 
     std::vector<vector<double>> STLSQ(vector<vector<double>> candidate_functions, vector<vector<double>> state_derivatives, int max_iterations, float threshold);
-    std::vector<double*>  threshold(vector<double> &coefficients, std::vector<double*> theta_matrix, double coefficient_threshold);
+    void threshold(vector<vector<double>> &candidate_functions, vector<double> &coefficients, vector<int> &candidate_coefficients, double coefficient_threshold);
+    double** vector_to_pointer(vector<vector<double>> matrix);
 };
 
 #endif

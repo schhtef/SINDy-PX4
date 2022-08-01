@@ -22,7 +22,6 @@
 #include <cmath>
 #include <iostream>
 #include <numeric>
-#include <vector>
 
 inline void daxpy( unsigned int n, double alpha, const double * x, double * y )
 {
@@ -616,11 +615,7 @@ Solve( unsigned int m, unsigned int n, const double * b, double * x )
   this->TerminationPrintOut();
 }
 
-void
-lsmr::SetMatrix( double ** inputA )
-{
-  this->A = inputA;
-}
+
 
 /**
  * computes y = y + A*x without altering x.
@@ -628,9 +623,9 @@ lsmr::SetMatrix( double ** inputA )
 void lsmr::
 Aprod1(unsigned int m, unsigned int n, const double * x, double * y ) const
 {
-  for ( unsigned int row = 0; row < n; row++ )
+  for ( unsigned int row = 0; row < m; row++ )
     {
-    const double * rowA = this->A[row];
+    std::vector<double> rowA = this->A[row];
     double sum = 0.0;
 
     for ( unsigned int col = 0; col < n; col++ )
@@ -675,4 +670,9 @@ TerminationPrintOut()
 		  << " Exit  LSMR.       normr  = " << this->normr << "     ,normAr = " << this->normAr << std::endl
 		  << " Exit  LSMR.       " << this->GetStoppingReasonMessage() << std::endl;
   }
+}
+
+void lsmr::SetMatrix(std::vector<std::vector<double>> inputA)
+{
+  this->A = inputA;
 }

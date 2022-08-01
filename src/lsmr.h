@@ -19,6 +19,7 @@
 #define LSQR_lsmr_h
 
 #include <iosfwd>
+#include <vector>
 
 /** \class lsmrBase
  *
@@ -503,7 +504,7 @@ public:
 
   
   /** Set the matrix A of the equation to be solved A*x = b. */
-  void SetMatrix( double ** A );
+  void SetMatrix( std::vector<std::vector<double>> inputA );
 
 
 private:
@@ -535,7 +536,7 @@ private:
   unsigned int localSize;
   std::ostream * nout;
 
-  double ** A;
+  std::vector<std::vector<double>> A;
 };
 
 #endif
