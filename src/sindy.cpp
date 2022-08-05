@@ -64,7 +64,7 @@ vector<vector<double>> SINDy::STLSQ(vector<vector<double>> candidate_functions, 
             //TODO need to handle case when candidate_function_State_i is empty
             least_squares.Solve(number_of_samples, candidate_function_state_i.at(0).size(), state_derivatives.at(i).data(), coefficients.at(i).data());
             //Threshold coefficient vector for this current state and update theta_matrix
-            threshold(candidate_function_state_i, coefficients.at(i), coefficient_index, 0.01);
+            threshold(candidate_function_state_i, coefficients.at(i), coefficient_index, coefficient_threshold);
             least_squares.SetMatrix(candidate_function_state_i);
         }
     }
@@ -107,7 +107,7 @@ void SINDy::threshold(vector<vector<double>> &candidate_functions, vector<double
 
     while(coeff_it != coefficients.end())
     {
-        if(*coeff_it < coefficient_threshold)
+        if(std::abs(*coeff_it) < coefficient_threshold)
         {
             std::vector<std::vector<double>>::iterator row_it = candidate_functions.begin();
             std::vector<double>::iterator col_it = (*row_it).begin();
