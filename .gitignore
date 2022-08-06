@@ -39,4 +39,4 @@ build/
 
 # Log files
 *.csv
-/tests/*
+/log/*
