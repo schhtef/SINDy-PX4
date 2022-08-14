@@ -22,6 +22,7 @@
 #include "plog/Initializers/RollingFileInitializer.h"
 #include "logger.h"
 #include <string>
+#include "sindy.h"
 
 using namespace std;
 

@@ -3,7 +3,7 @@
  *
  * @brief System Identification of Nonlinear Dynamics
  * 
- * Implements the SINDy algorithm, providing choice of optimizer and candidate functions 
+ * Implements the SINDy algorithm, providing choice of candidate functions 
  *
  * @author Stefan Bichlmaier, <bichlmaier.stef@gmail.com>
  *
@@ -15,29 +15,16 @@
 // ------------------------------------------------------------------------------
 //   Includes
 // ------------------------------------------------------------------------------
-//#include "autopilot_interface.h"
-//#include "c_library_v2/common/mavlink.h"
 #include "lsmr.h" // Least squares algorithm
 #include <vector>
 #include <iostream>
 #include <list>
 
-using namespace std;
 // ----------------------------------------------------------------------------------
-//   SINDy Class
+//   SINDy Functions
 // ----------------------------------------------------------------------------------
 
-class SINDy
-{
-private:
-
-public:
-    SINDy();
-    ~SINDy();
-
-    std::vector<vector<double>> STLSQ(vector<vector<double>> candidate_functions, vector<vector<double>> state_derivatives, int max_iterations, float threshold);
-    void threshold(vector<vector<double>> &candidate_functions, vector<double> &coefficients, vector<int> &candidate_coefficients, double coefficient_threshold);
-    double** vector_to_pointer(vector<vector<double>> matrix);
-};
+std::vector<double> STLSQ(std::vector<std::vector<double>> candidate_functions, std::vector<double> state_derivatives, int max_iterations, double threshold);
+void threshold(std::vector<std::vector<double>> &candidate_functions, std::vector<double> &coefficients, std::vector<int> &candidate_coefficients, double coefficient_threshold);
 
 #endif

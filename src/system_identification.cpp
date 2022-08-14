@@ -41,6 +41,7 @@ compute_thread()
         data = input_buffer->clear();
 		Telemetry interpolated_telemetry = interpolate(data, 500); // Resample input buffer and interpolate
 		
+		
 		// might cause a race condition where the SINDy thread checks disarmed just before the main thread
 		// sets the disarmed flag. Worst case scenario the SINDy thread logs one more buffer
 		if(!disarmed)

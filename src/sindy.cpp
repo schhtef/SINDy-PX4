@@ -13,17 +13,6 @@
 
 #include "sindy.h"
 
-SINDy::SINDy()
-{
-
-}
-
-SINDy::~SINDy()
-{
-    
-}
-
-
 /** Performs the Sequentially Thresholded Least Squares Algorithm from https://arxiv.org/abs/1711.05501
  * 
  *  @param candidate_functions A 2D vector, size lxm containing time series solutions to a set of candidate functions
@@ -33,62 +22,37 @@ SINDy::~SINDy()
  *  
  *  @return coefficients A 2D vector, size mxn which contains the weights associated with the candidate functions which describe the state_derivates
  */
-vector<vector<double>> SINDy::STLSQ(vector<vector<double>> candidate_functions, vector<vector<double>> state_derivatives, int max_iterations, float coefficient_threshold)
+std::vector<double> STLSQ(std::vector<std::vector<double>> candidate_functions, std::vector<double> state_derivatives, int max_iterations, double coefficient_threshold)
 {
     int number_of_states = state_derivatives.size();
-    int number_of_samples = state_derivatives.at(0).size();
+    int number_of_samples = state_derivatives.size();
     int number_of_features = candidate_functions.at(0).size(); // number of candidate functions
 
     lsmr least_squares;
     //vector_to_pointer(candidate_functions);
     least_squares.SetMatrix(candidate_functions);
 
-    // Initialize an m state by n feature (col x row) vector for the coefficients
-    std::vector<vector<double>> coefficients(number_of_states, std::vector<double>(number_of_features));
-    //least_squares.Solve(number_of_samples, number_of_features, state_derivatives.at(0).data(), coefficients.at(0).data());
-
-    for(int i = 0; i < number_of_states; i++)
-    {
-        vector<vector<double>> candidate_function_state_i = candidate_functions;
+    // Initialize an nx1 feature (col x row) vector for the coefficients
+    std::vector<double> coefficients(number_of_features);
         
-        vector<int> coefficient_index;
-        //Keep track of which coefficients we're keeping
-        for(int k = 0; k < number_of_features; k++)
-        {
-            coefficient_index.push_back(k);
-        }
-
-        for(int j = 0; j < max_iterations; j++)
-        {
-            //Perform least squares regression
-            //TODO need to handle case when candidate_function_State_i is empty
-            least_squares.Solve(number_of_samples, candidate_function_state_i.at(0).size(), state_derivatives.at(i).data(), coefficients.at(i).data());
-            //Threshold coefficient vector for this current state and update theta_matrix
-            threshold(candidate_function_state_i, coefficients.at(i), coefficient_index, coefficient_threshold);
-            least_squares.SetMatrix(candidate_function_state_i);
-        }
+    //Keep track of the index corresponding to the coefficients we're keeping
+    std::vector<int> coefficient_index;
+    for(int k = 0; k < number_of_features; k++)
+    {
+        coefficient_index.push_back(k);
     }
-    return coefficients;
-}
 
-/** Converts a vector of vectors (matrix) into a double pointer (2D array).
- *  This is because the LSMR library uses double**
- * 
- *  @param matrix The 2D vector to be converted
- * 
- * @return 2D double array
- */
-double ** SINDy::vector_to_pointer(vector<vector<double>> matrix)
-{
-    // Initialize vector of pointers
-    std::vector<double*> ptr_matrix(matrix.size(), nullptr);
-    int i = 0;
-    // Iterate through the pointers of matrix with ptr and assign pointer to each row of matrix
-    // with data() function, which returns true pointer to a vector element
-    for(auto &ptr : matrix)
-        ptr_matrix[i++] = ptr.data();
-    // Return true pointer
-    return ptr_matrix.data();
+    for(int j = 0; j < max_iterations; j++)
+    {
+        //Perform least squares regression
+        //TODO need to handle case when candidate_function_State_i is empty
+        least_squares.Solve(number_of_samples, candidate_functions.at(0).size(), state_derivatives.data(), coefficients.data());
+        //Threshold coefficient vector for this current state and update theta_matrix
+        threshold(candidate_functions, coefficients, coefficient_index, coefficient_threshold);
+        least_squares.SetMatrix(candidate_functions);
+    }
+
+    return coefficients;
 }
 
 /** Thresholds the values of a 2D vector
@@ -98,12 +62,12 @@ double ** SINDy::vector_to_pointer(vector<vector<double>> matrix)
  * 
  * @return thresholded_theta_matrix The matrix of candidate functions with terms removed associated with thresholded coefficients
  */
-void SINDy::threshold(vector<vector<double>> &candidate_functions, vector<double> &coefficients, vector<int> &coefficient_index, double coefficient_threshold)
+void threshold(std::vector<std::vector<double>> &candidate_functions, std::vector<double> &coefficients, std::vector<int> &coefficient_index, double coefficient_threshold)
 {
     //Threshold values in coefficient matrix and keep columns in theta which are not thresholded
 
-    vector<double>::iterator coeff_it = coefficients.begin();
-    vector<int>::iterator candidate_it = coefficient_index.begin();
+    std::vector<double>::iterator coeff_it = coefficients.begin();
+    std::vector<int>::iterator candidate_it = coefficient_index.begin();
 
     while(coeff_it != coefficients.end())
     {
