@@ -15,8 +15,8 @@
 // ------------------------------------------------------------------------------
 //   Includes
 // ------------------------------------------------------------------------------
-#include "autopilot_interface.h"
-#include "c_library_v2/common/mavlink.h"
+//#include "autopilot_interface.h"
+//#include "c_library_v2/common/mavlink.h"
 #include "buffer.h"
 #include "assert.h"
 

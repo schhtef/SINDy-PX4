@@ -61,6 +61,7 @@ Data_Buffer interpolate(Data_Buffer data, int sample_rate)
 	}
 
     lerp_vector(data.roll, data.attitude_time_boot_ms, interpolated_data.roll, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
+
     // Fill in the rest of the desired states
 
     return interpolated_data;
@@ -73,8 +74,8 @@ void lerp_vector(std::vector<T> y, std::vector<U> x, std::vector<T> &y_result, s
     {
         fprintf(stderr, "Caution: X and Y series are different sizes\n");
     }
-    //Since we are interoplating to a common time series, the result should be reset until the very last interpolation
-    if(x_result.size() == 0)
+    //Since we are interpolating to a common time series, the result should be reset until the very last interpolation
+    if(x_result.size() != 0)
     {
         x_result.clear();
     }
@@ -104,7 +105,7 @@ void lerp_vector(std::vector<T> y, std::vector<U> x, std::vector<T> &y_result, s
         x_result.push_back(x_interpolant);
 
         // Increment interpolant time
-        interpolant_time = interpolant_time+(sample_period*1000);
+        interpolant_time = interpolant_time+(sample_period);
 
         // If interpolant time is greater than the next sample, increment the iterator
         // If the interpolant time is equal, the next loop will just result in the true sample, no interpolation
@@ -122,11 +123,8 @@ void lerp_vector(std::vector<T> y, std::vector<U> x, std::vector<T> &y_result, s
     {
         fprintf(stderr, "Caution: X and Y results are different sizes\n");
     }
-    int x_size = x_result.size();
-    assert(x_size == ((end-start)/1000)*sample_rate)
-    {
-        fprintf(stderr, "Caution: size of interpolated vector is different than expected. Expected: %u, Actual %d\n", ((end-start)/((U)1000)*sample_rate, x_size));
-    }
+
+    assert(x_result.size() == ((end-start))*sample_rate);
 }
 
 template <typename T, typename U>
