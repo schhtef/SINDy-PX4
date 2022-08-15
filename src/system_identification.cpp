@@ -115,6 +115,7 @@ arma::mat SID::
 compute_candidate_functions(Data_Buffer data)
 {
 	//Compute desired candidate functions from input buffer
+	
 }
 
 void SID::

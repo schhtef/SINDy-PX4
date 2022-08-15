@@ -1,6 +1,9 @@
 # PX4-SID
 Companion computer software for System Identification using PX4
 
+## Dependencies
+Currently uses the mlpack library for ridge regression which is based on the Armadillo library for matrix operations. Install the [https://www.mlpack.org/](mlpack static library) which will include all its dependencies.
+
 ## SIL Run Instructions
 1. Download the [QGroundControl .appimage](http://qgroundcontrol.com/downloads/)
 2. Clone the PX4-Autopilot repository and complete installation of dependencies by following this [guide](https://dev.px4.io/v1.10_noredirect/en/simulation/gazebo.html)

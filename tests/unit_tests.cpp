@@ -3,9 +3,9 @@
 #include <vector>
 #include <algorithm>
 #include <math.h>
-//#include <mlpack/methods/linear_regression/linear_regression.hpp>
+#include <mlpack/methods/linear_regression/linear_regression.hpp>
 #include "csv.h"
-//#include "system_identification.h"
+#include "system_identification.h"
 //#include "interpolate.h"
 
 using namespace std;
@@ -24,7 +24,7 @@ int main()
     * dx/dt = -0.1x + 2y
     * dy/dt = -2x -0.1y
     */
-/*
+
     int num_iterations = 100;
     int num_states = 2;
     int num_features = 4;
@@ -53,12 +53,11 @@ int main()
 
         responses(i) = d_x;
     }
+    SID SINDy();
+    SINDy.STLSQ();
 
-    LinearRegression lr(data, responses, 0.1, false);
-    // Get the parameters, or coefficients.
-    arma::vec parameters = lr.Parameters();
-    parameters.print();
-*/
+
+/*
     //Generate data to interpolate
     float dt = 0.1;
     float t = 0.2;
@@ -80,7 +79,7 @@ int main()
     lerp_vector(y,x,y0,x0,start,end,20);
     std::vector<std::vector<float>> result({x0,y0});
     matrix_to_csv(result, "interpolation.csv", "x0,y0");
-
+*/
     return 0;
 }
 
