@@ -71,7 +71,7 @@ void Buffer::insert(mavlink_message_t message)
 			buffer.z.push_back(element.z);
 			break;
 		}
-
+/*
 		case MAVLINK_MSG_ID_GLOBAL_POSITION_INT:
 		{
 			mavlink_global_position_int_t element;
@@ -88,6 +88,8 @@ void Buffer::insert(mavlink_message_t message)
 			buffer.gvz.push_back(element.vz);
 			break;
 		}
+*/
+
 /*
 		case MAVLINK_MSG_ID_HIGHRES_IMU:
 		{
@@ -120,6 +122,18 @@ void Buffer::insert(mavlink_message_t message)
 			break;
 		}
 */
+		case MAVLINK_MSG_ID_WIND_COV:
+		{
+			mavlink_attitude_t element;
+			mavlink_msg_wind_cov_decode(&message, &element);
+			//Insert struct elements into attitude buffer
+			buffer.wind_time_usec.push_back(element.time_usec);
+			buffer.wind_x.push_back(element.wind_x);
+			buffer.wind_y.push_back(element.wind_y);
+			buffer.wind_z.push_back(element.wind_z);
+			break;
+		}
+
 		default:
 		{
 			//fprintf(stderr, "Warning, did not insert message id %i into buffer\n", message.msgid);
