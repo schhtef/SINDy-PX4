@@ -23,6 +23,6 @@
 
 using namespace std;
 
-void log_buffer_to_csv(Telemetry telemetry, string filename);
+void log_buffer_to_csv(Data_Buffer telemetry, string filename);
 
 #endif

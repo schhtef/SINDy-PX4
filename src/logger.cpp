@@ -9,9 +9,9 @@
 
 #include "logger.h"
 
-void log_buffer_to_csv(Telemetry telemetry, string filename)
+void log_buffer_to_csv(Data_Buffer telemetry, string filename)
 {
-
+/*
     //create an array of strings, size max length
     //iterate through buffers, appending element + ","
     //append " "+ "," if we have reached the end
@@ -39,7 +39,7 @@ void log_buffer_to_csv(Telemetry telemetry, string filename)
         row += to_string(telemetry.yaw[i]) + ",";
         row += to_string(telemetry.yawspeed[i]) + ",";
 
-        row += to_string(telemetry.time_boot_ms_global[i]) + ",";
+        //row += to_string(telemetry.time_boot_ms_global[i]) + ",";
         row += to_string(telemetry.alt[i]) + ",";
         row += to_string(telemetry.hdg[i]) + ",";
         row += to_string(telemetry.lat[i]) + ",";
@@ -48,15 +48,15 @@ void log_buffer_to_csv(Telemetry telemetry, string filename)
         row += to_string(telemetry.vx[i]) + ",";
         row += to_string(telemetry.vy[i]) + ",";
         row += to_string(telemetry.vz[i]) + "\n";
-/*
+
         row += to_string((*highres_imu_iterator).time_usec) + ",";
         row += to_string((*highres_imu_iterator).xacc) + ",";
         row += to_string((*highres_imu_iterator).yacc) + ",";
         row += to_string((*highres_imu_iterator).xgyro) + ",";
         row += to_string((*highres_imu_iterator).ygyro) + ",";
         highres_imu_iterator++;
-*/
-/*
+
+
         row += to_string((*local_position_iterator).time_boot_ms) + ",";
         row += to_string((*local_position_iterator).vx) + ",";
         row += to_string((*local_position_iterator).vy) + ",";
@@ -65,10 +65,11 @@ void log_buffer_to_csv(Telemetry telemetry, string filename)
         row += to_string((*local_position_iterator).y) + ",";
         row += to_string((*local_position_iterator).z) + "\n";
         local_position_iterator++;
-*/
+
         myfile << row;
         row = "";
     }
     myfile.close();
+    */
     return;
 }
