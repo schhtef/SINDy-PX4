@@ -42,10 +42,10 @@ compute_thread()
     compute_status = true;
     while ( ! time_to_exit )
 	{
-        data = input_buffer->clear();
-		interpolated_data = interpolate(data, 500); // Resample input buffer and interpolate
-		Vehicle_States states = compute_states(interpolated_data);
+        Data_Buffer data = input_buffer->clear();
+		Vehicle_States states = interpolate(data, 200); // Resample input buffer and compute desired states
 		arma::mat candidate_functions = compute_candidate_functions(states); //Generate Candidate Functions
+		arma::mat derivatives = get_derivatives(states); //Get state derivatives for SINDy
 		arma::mat coefficients = STLSQ(derivatives, candidate_functions, STLSQ_threshold, lambda); //Run STLSQ
 		//Log Results
 		
@@ -61,6 +61,136 @@ compute_thread()
 	return;
 }
 
+Vehicle_States SID::
+interpolate(Data_Buffer data, int sample_rate)
+{
+	using namespace arma;
+	//Perform the coordinate conversions to obtain the desired states
+
+	//Euler angles
+	arma::rowvec psi = arma::conv_to<arma::rowvec>::from(data.roll);
+	arma::rowvec theta = arma::conv_to<arma::rowvec>::from(data.pitch);
+	arma::rowvec phi = arma::conv_to<arma::rowvec>::from(data.yaw);
+
+	//Angular Velocities
+	arma::rowvec p = arma::conv_to<arma::rowvec>::from(data.rollspeed);
+	arma::rowvec q = arma::conv_to<arma::rowvec>::from(data.pitchspeed);
+	arma::rowvec r = arma::conv_to<arma::rowvec>::from(data.yawspeed);
+
+	arma::rowvec attitude_time_ms = arma::conv_to<arma::rowvec>::from(data.attitude_time_boot_ms);
+
+	//Linear Velocities
+	arma::rowvec lvx = arma::conv_to<arma::rowvec>::from(data.lvx);
+	arma::rowvec lvy = arma::conv_to<arma::rowvec>::from(data.lvy);
+	arma::rowvec lvz = arma::conv_to<arma::rowvec>::from(data.lvz);
+
+	arma::rowvec local_position_time_ms = arma::conv_to<arma::rowvec>::from(data.local_time_boot_ms);
+
+	//Interpolate using arma 1D interpolate
+	//Generate common time series
+
+	// Find first sample This will be the time origin
+ 	uint32_t first_sample_time = data.attitude_time_boot_ms.front();
+
+	if(data.local_time_boot_ms.front() < first_sample_time)
+	{
+		first_sample_time = data.local_time_boot_ms.front();
+	}
+    /*
+	if((data.wind_time_boot_ms.front()) < first_sample_time)
+	{
+		first_sample_time = data.wind_time_boot_ms.front();
+	}
+    */
+
+    // Find the buffer with the last sample.
+    //We will extrapolate to this value
+ 	uint32_t last_sample_time = data.attitude_time_boot_ms.back();
+
+	if(data.local_time_boot_ms.back() > last_sample_time)
+	{
+		last_sample_time = data.local_time_boot_ms.back();
+	}
+    /*
+	if((data.wind_time_boot_ms.back()) > last_sample_time)
+	{
+		last_sample_time = data.wind_time_boot_ms.back();
+	}
+    */
+	int number_of_samples = (last_sample_time-first_sample_time)*(sample_rate)/1000;
+	arma::rowvec time_ms = linspace<arma::rowvec>(first_sample_time, last_sample_time, number_of_samples);
+
+	arma::rowvec psi_interp(number_of_samples);
+	arma::rowvec theta_interp(number_of_samples);
+	arma::rowvec phi_interp(number_of_samples);
+	arma::rowvec p_interp(number_of_samples);
+	arma::rowvec q_interp(number_of_samples);
+	arma::rowvec r_interp(number_of_samples);
+	arma::rowvec lvx_interp(number_of_samples);
+	arma::rowvec lvy_interp(number_of_samples);
+	arma::rowvec lvz_interp(number_of_samples);
+
+	arma::interp1(attitude_time_ms, psi, time_ms, psi_interp);
+	arma::interp1(attitude_time_ms, theta, time_ms, theta_interp);
+	arma::interp1(attitude_time_ms, phi, time_ms, phi_interp);
+	arma::interp1(attitude_time_ms, p, time_ms, p_interp);
+	arma::interp1(attitude_time_ms, q, time_ms, q_interp);
+	arma::interp1(attitude_time_ms, r, time_ms, r_interp);
+	arma::interp1(local_position_time_ms, lvx, time_ms, lvx_interp);
+	arma::interp1(local_position_time_ms, lvy, time_ms, lvy_interp);
+	arma::interp1(local_position_time_ms, lvz, time_ms, lvz_interp);
+	
+	Vehicle_States state_buffer;
+	//Linear Body Velocity Computations
+	arma::fmat rotation_matrix(3,3);
+	arma::rowvec body_speeds(3);
+	arma::rowvec linear_speeds(3);
+
+	//Linear body speeds
+	arma::rowvec u(number_of_samples);
+	arma::rowvec v(number_of_samples);
+	arma::rowvec w(number_of_samples);
+
+	float theta_i;
+	float psi_i;
+	float phi_i;
+
+	for(int i = 0; i< number_of_samples; i++)
+	{
+		psi_i = psi_interp(i);
+		theta_i = theta_interp(i);
+		phi_i = phi_interp(i);
+
+		//Fill rotation matrix http://eecs.qmul.ac.uk/~gslabaugh/publications/euler.pdf
+		rotation_matrix = {{cos(theta_i)*cos(phi_i), sin(psi_i)*sin(theta_i)*cos(phi_i) - cos(psi_i)*sin(phi_i), cos(psi_i)*sin(theta_i)*cos(phi_i) + sin(psi_i)*sin(phi_i)},
+							{cos(theta_i)*sin(phi_i), sin(psi_i)*sin(theta_i)*sin(phi_i)+cos(psi_i)*cos(phi_i), cos(psi_i)*sin(theta_i)*sin(phi_i)-sin(psi_i)*cos(theta_i)},
+							{-sin(theta_i), sin(phi_i)*cos(theta_i), cos(psi_i)*cos(theta_i)}};
+		//Fill row vector with linear intertial frame velocities (xyz)
+		//Intertial frame velocities are computed by local velocity (NED) - wind velocity (NED)
+		//linear_speeds = {data.lvx[i]-data.wind_x[i], data.lvy[i]-data.wind_y[i], data.lvz[i]-data.wind_z[i]};
+		linear_speeds = {lvx_interp(i), lvy_interp(i), lvz_interp(i)};
+		//Rotate to bring intertial frame into body frame
+		body_speeds = linear_speeds*rotation_matrix;
+		//Insert results into the state buffer
+		u(i) = body_speeds(0);
+		v(i) = body_speeds(1);
+		w(i) = body_speeds(2);
+	}
+
+	state_buffer.p = p_interp;
+	state_buffer.q = q_interp;
+	state_buffer.r = r_interp;
+	state_buffer.psi = psi_interp;
+	state_buffer.theta = theta_interp;
+	state_buffer.phi = phi_interp;
+	state_buffer.u = u;
+	state_buffer.v = v;
+	state_buffer.w = w;
+	state_buffer.num_samples = number_of_samples;
+
+	return state_buffer;
+}
+
 arma::mat SID::
 STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float lambda)
 {
@@ -68,6 +198,8 @@ STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float la
 	//features are row indexes
 	//time domain samples are column indexes
 	bool notConverged = true;
+	int iteration = 0;
+	int max_iterations = 10;
 
 	using namespace mlpack::regression;
 	arma::mat coefficients(candidate_functions.n_rows, states.n_rows);
@@ -77,68 +209,25 @@ STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float la
 	{
 		arma::rowvec state = states.row(i); //Get derivatives for current state
 		LinearRegression lr(candidate_functions, state, 0.1, false); //Initial regression on the candidate functions
-		arma::vec state_coefficients = lr.Parameters();
+		arma::vec loop_coefficients = lr.Parameters();
+		arma::uvec index = arma::find(loop_coefficients<threshold); //Find values of the coefficients below the threshold
 		//Do subsequent regressions until converged 
-		while(notConverged)
+		while(notConverged && iteration < max_iterations)
 		{
-			arma::uvec index = arma::find(coefficients<threshold); //Find values of the coefficients below the threshold
-			arma::vec loop_coefficients = lr.Parameters();
 			lr.Train(candidate_functions.rows(index), state, false); //Regress again on thresholded candidate functions
 			//Check if relative error of subsequent solutions have changed much
+			loop_coefficients = lr.Parameters();
+			index = arma::find(loop_coefficients<threshold);
 			if(arma::approx_equal(lr.Parameters(), loop_coefficients, "reldiff", 0.1))
 			{
 				notConverged = false;
 			}
+			iteration++;
 		}
-		coefficients.col(i) = lr.Parameters(); //Solution for current state
+		//loop coefficients is too small for the coefficient matrix
+		coefficients.col(i) = loop_coefficients; //Solution for current state
 	}
 	return coefficients;
-}
-
-Vehicle_States SID::
-compute_states(Data_Buffer data)
-{
-	Vehicle_States state_buffer;
-	//Perform the coordinate conversions to obtain the desired states
-	//Euler angles
-	state_buffer.psi = conv_to<rowvec>::from(data.roll);
-	state_buffer.theta = conv_to<rowvec>::from(data.pitch);
-	state_buffer.phi = conv_to<rowvec>::from(data.yaw);
-
-	//Angular Velocities
-	state_buffer.p = conv_to<rowvec>::from(data.rollspeed);
-	state_buffer.q = conv_to<rowvec>::from(data.pitchspeed);
-	state_buffer.r = conv_to<rowvec>::from(data.yawspeed);
-
-	//Linear Body Velocity Computations
-	arma::mat rotation_matrix(3,3);
-	arma::rowvec body_speeds(3);
-	arma::rowvec linear_speeds(3);
-	float theta;
-	float psi;
-	float phi;
-
-	for(int i = 0; i< state_buffer.num_samples; i++)
-	{
-		psi = state_buffer.psi(i);
-		theta = state_buffer.theta(i);
-		phi = state_buffer.phi(i);
-
-		//Fill rotation matrix http://eecs.qmul.ac.uk/~gslabaugh/publications/euler.pdf
-		rotation_matrix = {{cos(theta)*cos(phi), sin(psi)*sin(theta)*cos(phi) - cos(psi)sin(phi), cos(psi)*sin(theta)*cos(phi) + sin(psi)*sin(phi)},
-							{cos(theta)*sin(phi), sin(psi)*sin(theta)*sin(phi)+cos(psi)*cos(phi), cos(psi)*sin(theta)*sin(phi)-sin(psi)*cos(theta)},
-							{-sin(theta), sin(phi)*cos(theta), cos(psi)*cos(theta)}};
-		//Fill row vector with linear intertial frame velocities (xyz)
-		//Intertial frame velocities are computed by local velocity (NED) - wind velocity (NED)
-		linear_speeds = {data.lvx(i)-data.wind_x(i), data.lvy(i)-data.wind_y(i), data.lvz(i)-data.wind_z(i)};
-		//Rotate to bring intertial frame into body frame
-		body_speeds = linear_speeds*rotation_matrix;
-		//Insert results into the state buffer
-		state_buffer.u(i) = body_speeds(0);
-		state_buffer.v(i) = body_speeds(1);
-		state_buffer.w(i) = body_speeds(2);
-	}
-
 }
 
 arma::mat SID::
@@ -146,26 +235,37 @@ compute_candidate_functions(Vehicle_States states)
 {
 	//Compute desired candidate functions from input buffer
 	int num_features = 28; //8*(8-1)/2
+	//Generate ones
+	arma::rowvec bias(states.num_samples);
+	bias.ones();
+	states.bias = bias;
 	//join states into matrix so we can iterate over them all
-	arma::mat state_matrix = arma::join_vert(bias, states.u);
+	arma::mat state_matrix = arma::join_vert(states.bias, states.u);
 	state_matrix = arma::join_vert(state_matrix, states.v, states.w, states.psi);
 	state_matrix = arma::join_vert(state_matrix, states.theta, states.phi);
-	assert(state_matrix.n_rows == num_features);
 
 	arma::mat candidate_functions(num_features, states.num_samples);
 	//Do for all columns
-	for(int i = 0; i <states.n_cols; i++)
+	for(int i = 0; i <state_matrix.n_cols; i++)
 	{
 		//For each state, multiply by all others
-		for(int j = 0; j < states.n_rows; j++)
+		for(int j = 0; j < state_matrix.n_rows; j++)
 		{
-			for(int k = 0; k < states.n_rows; k++)
+			for(int k = 0; k < state_matrix.n_rows; k++)
 			{
-				candidate_functions(j,i) = states(j,i)*states(k,i);
+				candidate_functions(j,i) = state_matrix(j,i)*state_matrix(k,i);
 			}
 		}
 	}
+	assert(candidate_functions.n_rows == num_features);
 	return candidate_functions;
+}
+
+arma::mat SID::
+get_derivatives(Vehicle_States states)
+{
+	arma::mat derivatives = arma::join_vert(states.p, states.q, states.r);
+	return derivatives;
 }
 
 void SID::

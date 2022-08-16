@@ -124,10 +124,10 @@ void Buffer::insert(mavlink_message_t message)
 */
 		case MAVLINK_MSG_ID_WIND_COV:
 		{
-			mavlink_attitude_t element;
+			mavlink_wind_cov_t element;
 			mavlink_msg_wind_cov_decode(&message, &element);
 			//Insert struct elements into attitude buffer
-			buffer.wind_time_msec.push_back(element.time_usec/1000); //us to ms
+			buffer.wind_time_boot_ms.push_back(element.time_usec/1000); //us to ms
 			buffer.wind_x.push_back(element.wind_x);
 			buffer.wind_y.push_back(element.wind_y);
 			buffer.wind_z.push_back(element.wind_z);

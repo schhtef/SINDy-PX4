@@ -31,9 +31,6 @@
 *.out
 *.app
 
-# vscode Config
-.vscode/
-
 # Executables
 build/
 

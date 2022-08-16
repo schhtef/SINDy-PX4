@@ -18,9 +18,8 @@
 #include "autopilot_interface.h"
 #include "c_library_v2/common/mavlink.h"
 #include "buffer.h"
-#include "interpolate.h"
 #include <string>
-#include <math.h>       /* pow */
+#include <math.h>
 #include <mlpack/methods/linear_regression/linear_regression.hpp>
 
 // Vehicle states
@@ -51,7 +50,7 @@ struct Vehicle_States{
     //Misc
     arma::rowvec alpha; //Angle of attack [rad]
     arma::rowvec beta;
-}
+};
 
 // ----------------------------------------------------------------------------------
 //   System Identification Class
@@ -61,9 +60,6 @@ class SID
 {
 private:
     Buffer *input_buffer;
-    Data_Buffer data;
-    Data_Buffer interpolated_data;
-
     bool time_to_exit = false;
     pthread_t compute_tid = 0;
 public:
@@ -76,11 +72,12 @@ public:
     void stop();
     void handle_quit(int sig);
 
-    Vehicle_States compute_states(Data_Buffer data)
-    arma::mat compute_candidate_functions(Data_Buffer data);
+    Vehicle_States interpolate(Data_Buffer data, int sample_rate);
+    arma::mat compute_candidate_functions(Vehicle_States states);
     arma::mat STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float lambda);
     arma::rowvec threshold(arma::vec coefficients, arma::mat candidate_functions, float threshold);
-
+    arma::mat get_derivatives(Vehicle_States states);
+    
     bool compute_status;
     bool disarmed;
 

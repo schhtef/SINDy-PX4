@@ -19,6 +19,7 @@
 //#include "c_library_v2/common/mavlink.h"
 #include "buffer.h"
 #include "assert.h"
+#include <armadillo>
 
 Data_Buffer interpolate(Data_Buffer data, int sample_rate);
 

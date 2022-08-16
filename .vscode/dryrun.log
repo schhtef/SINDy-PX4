@@ -1,0 +1,7 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory '/home/stefan/Documents/PX4-SID'
+git submodule update --init --recursive
+make: Leaving directory '/home/stefan/Documents/PX4-SID'
+ 
+make: *** No rule to make target 'SID_control', needed by 'all'.
+

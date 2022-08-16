@@ -1,0 +1,1 @@
+{"buildTargets":["SID_control_HIL","SID_control_SIL","all","clean","git_submodule"],"launchTargets":[],"customConfigurationProvider":{"workspaceBrowse":{"browsePath":[],"compilerArgs":[]},"fileIndex":[]}}

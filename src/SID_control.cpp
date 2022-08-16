@@ -243,7 +243,7 @@ commands(Autopilot_Interface &api, SID &SINDy, bool autotakeoff, string logfile_
 	com.target_system    = api.system_id; //Companion system id
 	com.target_component = api.autopilot_id; //Autopilot system id
 	com.command          = MAV_CMD_SET_MESSAGE_INTERVAL; //Command to send
-	com.param1           = MAVLINK_MSG_ID_GLOBAL_POSITION_INT; //Requested Message
+	com.param1           = MAVLINK_MSG_ID_WIND_COV; //Requested Message
 	com.param2           = 100000; //Default message interval
 
 	mavlink_msg_command_int_encode(api.system_id, api.companion_id, &message, &com);

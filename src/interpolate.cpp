@@ -25,44 +25,52 @@
  */
 Data_Buffer interpolate(Data_Buffer data, int sample_rate)
 {
+    using namespace arma;
+
     Data_Buffer interpolated_data;
+
     // Find first sample This will be the time origin
  	uint32_t first_sample_time = data.attitude_time_boot_ms.front();
 
-	if(data.global_time_boot_ms.front() < first_sample_time)
-	{
-		first_sample_time = data.global_time_boot_ms.front();
-	}
-	if((data.global_time_boot_ms.front()) < first_sample_time)
-	{
-		first_sample_time = data.global_time_boot_ms.front();
-	}
 	if(data.local_time_boot_ms.front() < first_sample_time)
 	{
 		first_sample_time = data.local_time_boot_ms.front();
 	}
+    /*
+	if((data.wind_time_boot_ms.front()) < first_sample_time)
+	{
+		first_sample_time = data.wind_time_boot_ms.front();
+	}
+    */
 
     // Find the buffer with the last sample.
     //We will extrapolate to this value
-
  	uint32_t last_sample_time = data.attitude_time_boot_ms.back();
 
-	if(data.global_time_boot_ms.back() > last_sample_time)
-	{
-		last_sample_time = data.global_time_boot_ms.back();
-	}
-	if((data.global_time_boot_ms.back()) > last_sample_time)
-	{
-		last_sample_time = data.global_time_boot_ms.back();
-	}
 	if(data.local_time_boot_ms.back() > last_sample_time)
 	{
 		last_sample_time = data.local_time_boot_ms.back();
 	}
+    /*
+	if((data.wind_time_boot_ms.back()) > last_sample_time)
+	{
+		last_sample_time = data.wind_time_boot_ms.back();
+	}
+    */
 
+    // Interpolate each parameter of interest
     lerp_vector(data.roll, data.attitude_time_boot_ms, interpolated_data.roll, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
-
-    // Fill in the rest of the desired states
+    lerp_vector(data.pitch, data.attitude_time_boot_ms, interpolated_data.pitch, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
+    lerp_vector(data.yaw, data.attitude_time_boot_ms, interpolated_data.yaw, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
+    lerp_vector(data.pitchspeed, data.attitude_time_boot_ms, interpolated_data.pitchspeed, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
+    lerp_vector(data.rollspeed, data.attitude_time_boot_ms, interpolated_data.rollspeed, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
+    lerp_vector(data.yawspeed, data.attitude_time_boot_ms, interpolated_data.yawspeed, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
+    lerp_vector(data.lvx, data.local_time_boot_ms, interpolated_data.lvx, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
+    lerp_vector(data.lvy, data.local_time_boot_ms, interpolated_data.lvy, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
+    lerp_vector(data.lvz, data.local_time_boot_ms, interpolated_data.lvz, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
+    //lerp_vector(data.wind_x, data.wind_time_boot_ms, interpolated_data.wind_x, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
+    //lerp_vector(data.wind_y, data.wind_time_boot_ms, interpolated_data.wind_y, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
+    //lerp_vector(data.wind_z, data.wind_time_boot_ms, interpolated_data.wind_z, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
 
     return interpolated_data;
 }
@@ -105,7 +113,7 @@ void lerp_vector(std::vector<T> y, std::vector<U> x, std::vector<T> &y_result, s
         x_result.push_back(x_interpolant);
 
         // Increment interpolant time
-        interpolant_time = interpolant_time+(sample_period);
+        interpolant_time = interpolant_time+(sample_period*1000);
 
         // If interpolant time is greater than the next sample, increment the iterator
         // If the interpolant time is equal, the next loop will just result in the true sample, no interpolation

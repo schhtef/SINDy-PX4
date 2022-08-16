@@ -48,7 +48,7 @@ struct Data_Buffer {
     std::vector<float> lvy; /*< [m/s] Y Speed*/
     std::vector<float> lvz; /*< [m/s] Z Speed*/
 
-    std::vector<uint32_t> wind_time_msec; /*< [us] Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude of the number.*/
+    std::vector<uint32_t> wind_time_boot_ms; /*< [us] Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude of the number.*/
     std::vector<float> wind_x; /*< [m/s] Wind in X (NED) direction*/
     std::vector<float> wind_y; /*< [m/s] Wind in Y (NED) direction*/
     std::vector<float> wind_z; /*< [m/s] Wind in Z (NED) direction*/
@@ -71,7 +71,7 @@ struct Data_Buffer {
         lvy.clear(); /*< [m/s] Y Speed*/
         lvz.clear(); /*< [m/s] Z Speed*/
 
-        wind_time_usec.clear();
+        wind_time_boot_ms.clear();
         wind_x.clear();
         wind_y.clear();
         wind_z.clear();
@@ -88,9 +88,9 @@ struct Data_Buffer {
         {
             max_length = local_time_boot_ms.size();
         }
-        if(wind_time_usec.size() > max_length)
+        if(wind_time_boot_ms.size() > max_length)
         {
-            max_length = global_time_boot_ms.size();
+            max_length = wind_time_boot_ms.size();
         }
         return max_length;
     }
