@@ -385,6 +385,13 @@ read_messages()
 					break;
 				}
 
+				case MAVLINK_MSG_ID_WIND_COV:
+				{
+					//printf("MAVLINK_MSG_ID_WIND_COV\n");
+					input_buffer->insert(message);
+					break;
+				}
+
 				default:
 				{
 					// printf("Warning, did not handle message id %i\n",message.msgid);

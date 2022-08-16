@@ -40,33 +40,6 @@ struct Data_Buffer {
     std::vector<float> pitchspeed; /*< [rad/s] Pitch angular speed*/
     std::vector<float> yawspeed; /*< [rad/s] Yaw angular speed*/
 
-    std::vector<uint32_t> global_time_boot_ms; /*< [ms] Timestamp (time since system boot).*/
-    std::vector<int32_t> lat; /*< [degE7] Latitude, expressed*/
-    std::vector<int32_t> lon; /*< [degE7] Longitude, expressed*/
-    std::vector<int32_t> alt; /*< [mm] Altitude (MSL). Note that virtually all GPS modules provide both WGS84 and MSL.*/
-    std::vector<int32_t> relative_alt; /*< [mm] Altitude above ground*/
-    std::vector<int16_t> gvx; /*< [cm/s] Ground X Speed (Latitude, positive north)*/
-    std::vector<int16_t> gvy; /*< [cm/s] Ground Y Speed (Longitude, positive east)*/
-    std::vector<int16_t> gvz; /*< [cm/s] Ground Z Speed (Altitude, positive down)*/
-    std::vector<uint16_t> hdg; /*< [cdeg] Vehicle heading (yaw angle), 0.0..359.99 degrees. If unknown, set to: UINT16_MAX*/
-
-    std::vector<uint64_t> imu_time_usec; /*< [us] Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude of the number.*/
-    std::vector<float> xacc; /*< [m/s/s] X acceleration*/
-    std::vector<float> yacc; /*< [m/s/s] Y acceleration*/
-    std::vector<float> zacc; /*< [m/s/s] Z acceleration*/
-    std::vector<float> xgyro; /*< [rad/s] Angular speed around X axis*/
-    std::vector<float> ygyro; /*< [rad/s] Angular speed around Y axis*/
-    std::vector<float> zgyro; /*< [rad/s] Angular speed around Z axis*/
-    std::vector<float> xmag; /*< [gauss] X Magnetic field*/
-    std::vector<float> ymag; /*< [gauss] Y Magnetic field*/
-    std::vector<float> zmag; /*< [gauss] Z Magnetic field*/
-    std::vector<float> abs_pressure; /*< [hPa] Absolute pressure*/
-    std::vector<float> diff_pressure; /*< [hPa] Differential pressure*/
-    std::vector<float> pressure_alt; /*<  Altitude calculated from pressure*/
-    std::vector<float> temperature; /*< [degC] Temperature*/
-    std::vector<uint16_t> fields_updated; /*<  Bitmap for fields that have updated since last message*/
-    std::vector<uint8_t> id; /*<  Id. Ids are numbered from 0 and map to IMUs numbered from 1 (e.g. IMU1 will have a message with id=0)*/
-
     std::vector<uint32_t> local_time_boot_ms; /*< [ms] Timestamp (time since system boot).*/
     std::vector<float> x; /*< [m] X Position*/
     std::vector<float> y; /*< [m] Y Position*/
@@ -74,6 +47,11 @@ struct Data_Buffer {
     std::vector<float> lvx; /*< [m/s] X Speed*/
     std::vector<float> lvy; /*< [m/s] Y Speed*/
     std::vector<float> lvz; /*< [m/s] Z Speed*/
+
+    std::vector<uint32_t> wind_time_msec; /*< [us] Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude of the number.*/
+    std::vector<float> wind_x; /*< [m/s] Wind in X (NED) direction*/
+    std::vector<float> wind_y; /*< [m/s] Wind in Y (NED) direction*/
+    std::vector<float> wind_z; /*< [m/s] Wind in Z (NED) direction*/
 
     void clear_buffers()
     {
@@ -85,40 +63,18 @@ struct Data_Buffer {
         pitchspeed.clear(); /*< [rad/s] Pitch angular speed*/
         yawspeed.clear(); /*< [rad/s] Yaw angular speed*/
 
-        global_time_boot_ms.clear(); /*< [ms] Timestamp (time since system boot).*/
-        lat.clear(); /*< [degE7] Latitude, expressed*/
-        lon.clear(); /*< [degE7] Longitude, expressed*/
-        alt.clear(); /*< [mm] Altitude (MSL). Note that virtually all GPS modules provide both WGS84 and MSL.*/
-        relative_alt.clear(); /*< [mm] Altitude above ground*/
-        gvx.clear(); /*< [cm/s] Ground X Speed (Latitude, positive north)*/
-        gvy.clear(); /*< [cm/s] Ground Y Speed (Longitude, positive east)*/
-        gvz.clear(); /*< [cm/s] Ground Z Speed (Altitude, positive down)*/
-        hdg.clear(); /*< [cdeg] Vehicle heading (yaw angle), 0.0..359.99 degrees. If unknown, set to: UINT16_MAX*/
-
-        imu_time_usec.clear(); /*< [us] Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude of the number.*/
-        xacc.clear(); /*< [m/s/s] X acceleration*/
-        yacc.clear(); /*< [m/s/s] Y acceleration*/
-        zacc.clear(); /*< [m/s/s] Z acceleration*/
-        xgyro.clear(); /*< [rad/s] Angular speed around X axis*/
-        ygyro.clear(); /*< [rad/s] Angular speed around Y axis*/
-        zgyro.clear(); /*< [rad/s] Angular speed around Z axis*/
-        xmag.clear(); /*< [gauss] X Magnetic field*/
-        ymag.clear(); /*< [gauss] Y Magnetic field*/
-        zmag.clear(); /*< [gauss] Z Magnetic field*/
-        abs_pressure.clear(); /*< [hPa] Absolute pressure*/
-        diff_pressure.clear(); /*< [hPa] Differential pressure*/
-        pressure_alt.clear(); /*<  Altitude calculated from pressure*/
-        temperature.clear(); /*< [degC] Temperature*/
-        fields_updated.clear(); /*<  Bitmap for fields that have updated since last message*/
-        id.clear(); /*<  Id. Ids are numbered from 0 and map to IMUs numbered from 1 (e.g. IMU1 will have a message with id=0)*/
-
         local_time_boot_ms.clear(); /*< [ms] Timestamp (time since system boot).*/
         x.clear(); /*< [m] X Position*/
         y.clear(); /*< [m] Y Position*/
         z.clear(); /*< [m] Z Position*/
         lvx.clear(); /*< [m/s] X Speed*/
         lvy.clear(); /*< [m/s] Y Speed*/
-        lvz.clear(); /*< [m/s] Z Speed*/        
+        lvz.clear(); /*< [m/s] Z Speed*/
+
+        wind_time_usec.clear();
+        wind_x.clear();
+        wind_y.clear();
+        wind_z.clear();
     }
 
     int find_max_length()
@@ -132,13 +88,12 @@ struct Data_Buffer {
         {
             max_length = local_time_boot_ms.size();
         }
-        if(global_time_boot_ms.size() > max_length)
+        if(wind_time_usec.size() > max_length)
         {
             max_length = global_time_boot_ms.size();
         }
         return max_length;
     }
-
 };
 
 // ----------------------------------------------------------------------------------

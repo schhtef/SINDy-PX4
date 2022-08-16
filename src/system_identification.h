@@ -23,6 +23,36 @@
 #include <math.h>       /* pow */
 #include <mlpack/methods/linear_regression/linear_regression.hpp>
 
+// Vehicle states
+struct Vehicle_States{
+    int num_samples;
+
+    //Common time base
+    arma::rowvec time_boot_ms;
+
+    //Bias
+    arma::rowvec bias; //Body velocity in X
+
+    //Linear body velocities
+    arma::rowvec u; //Body velocity in X
+    arma::rowvec v; //Body velocity in Y
+    arma::rowvec w; //Body velocity in Z
+
+    //Angular body velocities
+    arma::rowvec p; //Roll angular velocity [rad/s] 
+    arma::rowvec q; //Pitch angular velocity [rad/s]
+    arma::rowvec r; //Yaw angular velocity [rad/s]
+
+    //Euler body angles
+    arma::rowvec psi; //Roll angle [rad]
+    arma::rowvec theta; //Pitch angle [rad]
+    arma::rowvec phi; //Yaw angle [rad]
+
+    //Misc
+    arma::rowvec alpha; //Angle of attack [rad]
+    arma::rowvec beta;
+}
+
 // ----------------------------------------------------------------------------------
 //   System Identification Class
 // ----------------------------------------------------------------------------------
@@ -33,6 +63,7 @@ private:
     Buffer *input_buffer;
     Data_Buffer data;
     Data_Buffer interpolated_data;
+
     bool time_to_exit = false;
     pthread_t compute_tid = 0;
 public:
@@ -45,8 +76,8 @@ public:
     void stop();
     void handle_quit(int sig);
 
+    Vehicle_States compute_states(Data_Buffer data)
     arma::mat compute_candidate_functions(Data_Buffer data);
-    arma::mat get_state_derivatives(Data_Buffer data);
     arma::mat STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float lambda);
     arma::rowvec threshold(arma::vec coefficients, arma::mat candidate_functions, float threshold);
 

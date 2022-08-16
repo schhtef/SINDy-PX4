@@ -44,12 +44,9 @@ compute_thread()
 	{
         data = input_buffer->clear();
 		interpolated_data = interpolate(data, 500); // Resample input buffer and interpolate
-		//Generate Candidate Functions
-		arma::mat candidate_functions = compute_candidate_functions(interpolated_data);
-		//Construct arma::mat and arma::vec for SINDy
-		arma::mat derivatives = get_state_derivatives(interpolated_data);
-		//Pass into STLSQ
-		arma::mat coefficients = STLSQ(derivatives, candidate_functions, STLSQ_threshold, lambda);
+		Vehicle_States states = compute_states(interpolated_data);
+		arma::mat candidate_functions = compute_candidate_functions(states); //Generate Candidate Functions
+		arma::mat coefficients = STLSQ(derivatives, candidate_functions, STLSQ_threshold, lambda); //Run STLSQ
 		//Log Results
 		
 		// might cause a race condition where the SINDy thread checks disarmed just before the main thread
@@ -98,24 +95,77 @@ STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float la
 	return coefficients;
 }
 
-arma::rowvec SID::
-threshold(arma::vec coefficients, arma::mat candidate_functions, float threshold)
+Vehicle_States SID::
+compute_states(Data_Buffer data)
 {
-	//Find indexes of coefficient vector which are smaller than the threshold
+	Vehicle_States state_buffer;
+	//Perform the coordinate conversions to obtain the desired states
+	//Euler angles
+	state_buffer.psi = conv_to<rowvec>::from(data.roll);
+	state_buffer.theta = conv_to<rowvec>::from(data.pitch);
+	state_buffer.phi = conv_to<rowvec>::from(data.yaw);
+
+	//Angular Velocities
+	state_buffer.p = conv_to<rowvec>::from(data.rollspeed);
+	state_buffer.q = conv_to<rowvec>::from(data.pitchspeed);
+	state_buffer.r = conv_to<rowvec>::from(data.yawspeed);
+
+	//Linear Body Velocity Computations
+	arma::mat rotation_matrix(3,3);
+	arma::rowvec body_speeds(3);
+	arma::rowvec linear_speeds(3);
+	float theta;
+	float psi;
+	float phi;
+
+	for(int i = 0; i< state_buffer.num_samples; i++)
+	{
+		psi = state_buffer.psi(i);
+		theta = state_buffer.theta(i);
+		phi = state_buffer.phi(i);
+
+		//Fill rotation matrix http://eecs.qmul.ac.uk/~gslabaugh/publications/euler.pdf
+		rotation_matrix = {{cos(theta)*cos(phi), sin(psi)*sin(theta)*cos(phi) - cos(psi)sin(phi), cos(psi)*sin(theta)*cos(phi) + sin(psi)*sin(phi)},
+							{cos(theta)*sin(phi), sin(psi)*sin(theta)*sin(phi)+cos(psi)*cos(phi), cos(psi)*sin(theta)*sin(phi)-sin(psi)*cos(theta)},
+							{-sin(theta), sin(phi)*cos(theta), cos(psi)*cos(theta)}};
+		//Fill row vector with linear intertial frame velocities (xyz)
+		//Intertial frame velocities are computed by local velocity (NED) - wind velocity (NED)
+		linear_speeds = {data.lvx(i)-data.wind_x(i), data.lvy(i)-data.wind_y(i), data.lvz(i)-data.wind_z(i)};
+		//Rotate to bring intertial frame into body frame
+		body_speeds = linear_speeds*rotation_matrix;
+		//Insert results into the state buffer
+		state_buffer.u(i) = body_speeds(0);
+		state_buffer.v(i) = body_speeds(1);
+		state_buffer.w(i) = body_speeds(2);
+	}
 
 }
 
 arma::mat SID::
-get_state_derivatives(Data_Buffer data)
-{
-	//Select and compute state derivatives from input buffer
-}
-
-arma::mat SID::
-compute_candidate_functions(Data_Buffer data)
+compute_candidate_functions(Vehicle_States states)
 {
 	//Compute desired candidate functions from input buffer
-	
+	int num_features = 28; //8*(8-1)/2
+	//join states into matrix so we can iterate over them all
+	arma::mat state_matrix = arma::join_vert(bias, states.u);
+	state_matrix = arma::join_vert(state_matrix, states.v, states.w, states.psi);
+	state_matrix = arma::join_vert(state_matrix, states.theta, states.phi);
+	assert(state_matrix.n_rows == num_features);
+
+	arma::mat candidate_functions(num_features, states.num_samples);
+	//Do for all columns
+	for(int i = 0; i <states.n_cols; i++)
+	{
+		//For each state, multiply by all others
+		for(int j = 0; j < states.n_rows; j++)
+		{
+			for(int k = 0; k < states.n_rows; k++)
+			{
+				candidate_functions(j,i) = states(j,i)*states(k,i);
+			}
+		}
+	}
+	return candidate_functions;
 }
 
 void SID::
