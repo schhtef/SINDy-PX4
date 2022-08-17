@@ -62,6 +62,8 @@ compute_thread()
 		auto derivative_time = std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4);
 		auto SINDy_time = std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5);
 
+		log_coeff(coefficients, "coefficients.csv");
+
 		std::cout << "Buffer Clear: " << clear_buffer_time.count() << "ms\n";
 		std::cout << "Interpolation: " << interpolation_time.count() << "us\n";
 		std::cout << "Candidate Functions: " << candidate_computation_time.count() << "us\n";
@@ -79,6 +81,30 @@ compute_thread()
 	}
 	compute_status = false;
 	return;
+}
+
+void SID::
+log_coeff(arma::mat matrix, string filename)
+{
+	std::ofstream myfile;
+    myfile.open (filename);
+	myfile << ",p, q, r, u, v, w" << endl;
+	std::vector<string> candidates = {"1", "x", "y", "z", "psi", "theta", "phi",
+									"x^2", "xy", "xz", "xpsi", "xtheta", "xphi", 
+									"y^2", "yz", "ypsi", "ytheta", "yphi", "z^2",
+									"zpsi", "ztheta", "zphi","psi^2","psitheta",
+									"psiphi", "theta^2", "thetaphi", "phi^2"};
+	assert(candidates.size() == matrix.n_rows);
+	for(int i = 0; i < matrix.n_rows; i++)
+	{
+		myfile << candidates[i] << ",";
+		for(int j = 0; j < matrix.n_cols; j++)
+		{
+			myfile << matrix(i,j) << ",";
+		}
+		myfile << "\n";
+	}
+	myfile.close();
 }
 
 Vehicle_States SID::
@@ -103,16 +129,20 @@ interpolate(Data_Buffer data, int sample_rate)
 	arma::rowvec lvx = arma::conv_to<arma::rowvec>::from(data.lvx);
 	arma::rowvec lvy = arma::conv_to<arma::rowvec>::from(data.lvy);
 	arma::rowvec lvz = arma::conv_to<arma::rowvec>::from(data.lvz);
+	arma::rowvec x = arma::conv_to<arma::rowvec>::from(data.x);
+	arma::rowvec y = arma::conv_to<arma::rowvec>::from(data.y);
+	arma::rowvec z = arma::conv_to<arma::rowvec>::from(data.z);
 
 	arma::rowvec local_position_time_ms = arma::conv_to<arma::rowvec>::from(data.local_time_boot_ms);
 
 	//Interpolate using arma 1D interpolate
 	//Generate common time series
 
-	// Find first sample This will be the time origin
+	// Find latest first sample sample time, this will be the time origin
+	// Using latest so no extrapolation occurs
  	uint32_t first_sample_time = data.attitude_time_boot_ms.front();
 
-	if(data.local_time_boot_ms.front() < first_sample_time)
+	if(data.local_time_boot_ms.front() > first_sample_time)
 	{
 		first_sample_time = data.local_time_boot_ms.front();
 	}
@@ -123,11 +153,10 @@ interpolate(Data_Buffer data, int sample_rate)
 	}
     */
 
-    // Find the buffer with the last sample.
-    //We will extrapolate to this value
+    // Find the buffer with the earliest last sample to avoid extrapolation
  	uint32_t last_sample_time = data.attitude_time_boot_ms.back();
 
-	if(data.local_time_boot_ms.back() > last_sample_time)
+	if(data.local_time_boot_ms.back() < last_sample_time)
 	{
 		last_sample_time = data.local_time_boot_ms.back();
 	}
@@ -149,6 +178,9 @@ interpolate(Data_Buffer data, int sample_rate)
 	arma::rowvec lvx_interp(number_of_samples);
 	arma::rowvec lvy_interp(number_of_samples);
 	arma::rowvec lvz_interp(number_of_samples);
+	arma::rowvec x_interp(number_of_samples);
+	arma::rowvec y_interp(number_of_samples);
+	arma::rowvec z_interp(number_of_samples);
 
 	arma::interp1(attitude_time_ms, psi, time_ms, psi_interp);
 	arma::interp1(attitude_time_ms, theta, time_ms, theta_interp);
@@ -159,8 +191,12 @@ interpolate(Data_Buffer data, int sample_rate)
 	arma::interp1(local_position_time_ms, lvx, time_ms, lvx_interp);
 	arma::interp1(local_position_time_ms, lvy, time_ms, lvy_interp);
 	arma::interp1(local_position_time_ms, lvz, time_ms, lvz_interp);
+	arma::interp1(local_position_time_ms, x, time_ms, x_interp);
+	arma::interp1(local_position_time_ms, y, time_ms, y_interp);
+	arma::interp1(local_position_time_ms, z, time_ms, z_interp);
 	
 	Vehicle_States state_buffer;
+
 	//Linear Body Velocity Computations
 	arma::fmat rotation_matrix(3,3);
 	arma::rowvec body_speeds(3);
@@ -206,6 +242,9 @@ interpolate(Data_Buffer data, int sample_rate)
 	state_buffer.u = u;
 	state_buffer.v = v;
 	state_buffer.w = w;
+	state_buffer.x = x_interp;
+	state_buffer.y = y_interp;
+	state_buffer.z = z_interp;
 	state_buffer.num_samples = number_of_samples;
 
 	return state_buffer;
@@ -238,13 +277,15 @@ STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float la
 		arma::rowvec state = states.row(i); //Get derivatives for current state
 		LinearRegression lr(candidate_functions, state, lambda, false); //Initial regression on the candidate functions
 		arma::vec loop_coefficients = lr.Parameters();
-		
 		//Do subsequent regressions until converged
 		while(notConverged && iteration < max_iterations)
 		{
-			arma::uvec index = arma::find(loop_coefficients<threshold); //Find indexes of coefficients which are lower than the threshold value
-			coefficient_indexes.shed_rows(index); //Remove indexes which correspond to thresholded values
-			lr.Train(candidate_functions.rows(index), state, false); //Regress again on thresholded candidate functions
+			loop_coefficients.print();
+			arma::uvec below_index = arma::find(loop_coefficients<threshold); //Find indexes of coefficients which are lower than the threshold value
+			below_index.print();
+			coefficient_indexes.shed_rows(below_index); //Remove indexes which correspond to thresholded values
+			arma::uvec above_index = arma::find(loop_coefficients>threshold); //Find indexes of coefficients which are higher than the threshold value
+			lr.Train(candidate_functions.rows(above_index), state, false); //Regress again on thresholded candidate functions
 			//Check if coefficient vector has changed in size since last iteration
 			if(lr.Parameters().size() == loop_coefficients.size())
 			{
@@ -283,8 +324,8 @@ compute_candidate_functions(Vehicle_States states)
 	bias.ones();
 	states.bias = bias;
 	//join states into matrix so we can iterate over them all
-	arma::mat state_matrix = arma::join_vert(states.bias, states.u);
-	state_matrix = arma::join_vert(state_matrix, states.v, states.w, states.psi);
+	arma::mat state_matrix = arma::join_vert(states.bias, states.x);
+	state_matrix = arma::join_vert(state_matrix, states.y, states.z, states.psi);
 	state_matrix = arma::join_vert(state_matrix, states.theta, states.phi);
 	int num_features = state_matrix.n_rows*(state_matrix.n_rows+1)/2; //8*(8-1)/2
 	arma::mat candidate_functions(num_features, states.num_samples);
@@ -312,6 +353,7 @@ arma::mat SID::
 get_derivatives(Vehicle_States states)
 {
 	arma::mat derivatives = arma::join_vert(states.p, states.q, states.r);
+	derivatives = arma::join_vert(derivatives, states.u, states.v, states.w);
 	return derivatives;
 }
 

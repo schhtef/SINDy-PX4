@@ -38,6 +38,11 @@ struct Vehicle_States{
     arma::rowvec v; //Body velocity in Y
     arma::rowvec w; //Body velocity in Z
 
+    //Linear body positions
+    arma::rowvec x; //Body position in X
+    arma::rowvec y; //Body position in Y
+    arma::rowvec z; //Body position in Z
+
     //Angular body velocities
     arma::rowvec p; //Roll angular velocity [rad/s] 
     arma::rowvec q; //Pitch angular velocity [rad/s]
@@ -78,7 +83,8 @@ public:
     arma::mat STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float lambda);
     arma::rowvec threshold(arma::vec coefficients, arma::mat candidate_functions, float threshold);
     arma::mat get_derivatives(Vehicle_States states);
-    
+    void log_coeff(arma::mat matrix, string filename);
+
     bool compute_status;
     bool disarmed;
 
