@@ -29,6 +29,8 @@ SID::
 SID(Buffer *input_buffer_)
 {
     input_buffer = input_buffer_;
+	STLSQ_threshold = 0.01;
+	lambda = 0.5;
 }
 
 SID::
@@ -41,12 +43,31 @@ compute_thread()
 {
     compute_status = true;
     while ( ! time_to_exit )
-	{
+	{ 
+		auto t1 = std::chrono::high_resolution_clock::now();
         Data_Buffer data = input_buffer->clear();
+		auto t2 = std::chrono::high_resolution_clock::now();
 		Vehicle_States states = interpolate(data, 200); // Resample input buffer and compute desired states
-		arma::mat candidate_functions = compute_candidate_functions(states); //Generate Candidate Functions
+		auto t3 = std::chrono::high_resolution_clock::now();
+		arma::mat candidate_functions = compute_candidate_functions(states); //Generate Candidate Function
+		auto t4 = std::chrono::high_resolution_clock::now();
 		arma::mat derivatives = get_derivatives(states); //Get state derivatives for SINDy
+		auto t5 = std::chrono::high_resolution_clock::now();
 		arma::mat coefficients = STLSQ(derivatives, candidate_functions, STLSQ_threshold, lambda); //Run STLSQ
+		auto t6 = std::chrono::high_resolution_clock::now();
+
+    	auto clear_buffer_time = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+    	auto interpolation_time = std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2);
+		auto candidate_computation_time = std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3);
+		auto derivative_time = std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4);
+		auto SINDy_time = std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5);
+
+		std::cout << "Buffer Clear: " << clear_buffer_time.count() << "ms\n";
+		std::cout << "Interpolation: " << interpolation_time.count() << "us\n";
+		std::cout << "Candidate Functions: " << candidate_computation_time.count() << "us\n";
+		std::cout << "Derivative Parse: " << derivative_time.count() << "us\n";
+		std::cout << "SINDy: " << SINDy_time.count() << "us\n";
+
 		//Log Results
 		
 		// might cause a race condition where the SINDy thread checks disarmed just before the main thread
@@ -57,7 +78,6 @@ compute_thread()
 		}
 	}
 	compute_status = false;
-
 	return;
 }
 
@@ -202,30 +222,54 @@ STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float la
 	int max_iterations = 10;
 
 	using namespace mlpack::regression;
+	//To store result of STLSQ
 	arma::mat coefficients(candidate_functions.n_rows, states.n_rows);
-
-	//Do STLSQ for each state of interest
+	
+	//Do STLSQ for each state
 	for(int i = 0; i < states.n_rows; i++)
 	{
+		//Keep track of which candidate functions have been discarded, so we can match resulting coefficents to candidate functions
+		arma::uvec coefficient_indexes(candidate_functions.n_rows);
+		//For each state, fill the column with indexes 0 to number of candidate functions
+		for(int j = 0; j < candidate_functions.n_rows; j++)
+		{
+			coefficient_indexes(j) = j;
+		}
 		arma::rowvec state = states.row(i); //Get derivatives for current state
-		LinearRegression lr(candidate_functions, state, 0.1, false); //Initial regression on the candidate functions
+		LinearRegression lr(candidate_functions, state, lambda, false); //Initial regression on the candidate functions
 		arma::vec loop_coefficients = lr.Parameters();
-		arma::uvec index = arma::find(loop_coefficients<threshold); //Find values of the coefficients below the threshold
-		//Do subsequent regressions until converged 
+		
+		//Do subsequent regressions until converged
 		while(notConverged && iteration < max_iterations)
 		{
+			arma::uvec index = arma::find(loop_coefficients<threshold); //Find indexes of coefficients which are lower than the threshold value
+			coefficient_indexes.shed_rows(index); //Remove indexes which correspond to thresholded values
 			lr.Train(candidate_functions.rows(index), state, false); //Regress again on thresholded candidate functions
-			//Check if relative error of subsequent solutions have changed much
-			loop_coefficients = lr.Parameters();
-			index = arma::find(loop_coefficients<threshold);
-			if(arma::approx_equal(lr.Parameters(), loop_coefficients, "reldiff", 0.1))
+			//Check if coefficient vector has changed in size since last iteration
+			if(lr.Parameters().size() == loop_coefficients.size())
 			{
-				notConverged = false;
+				notConverged = false; //If thresholding hasn't shrunk the coefficient vector, we have converged
 			}
-			iteration++;
+			loop_coefficients = lr.Parameters();
+			iteration++; //Keep track of iteration number
+		}
+
+		if(loop_coefficients.size() == 0)
+		{
+			fprintf(stderr, "Thresholding parameter set too low and removed all coefficients in state %d\n", i);
+			coefficients.col(i).zeros(); //Set all coefficients to zero and don't attempt to match indexes
+			break;
+		}
+		
+		//Match coefficients to their candidate functions
+		arma::vec state_coefficients(candidate_functions.n_rows);
+		state_coefficients.zeros();
+		for(int k = 0; k < coefficient_indexes.size(); k++)
+		{
+			state_coefficients(coefficient_indexes(k)) = loop_coefficients(k);
 		}
 		//loop coefficients is too small for the coefficient matrix
-		coefficients.col(i) = loop_coefficients; //Solution for current state
+		coefficients.col(i) = state_coefficients; //Solution for current state
 	}
 	return coefficients;
 }
@@ -234,7 +278,6 @@ arma::mat SID::
 compute_candidate_functions(Vehicle_States states)
 {
 	//Compute desired candidate functions from input buffer
-	int num_features = 28; //8*(8-1)/2
 	//Generate ones
 	arma::rowvec bias(states.num_samples);
 	bias.ones();
@@ -243,19 +286,23 @@ compute_candidate_functions(Vehicle_States states)
 	arma::mat state_matrix = arma::join_vert(states.bias, states.u);
 	state_matrix = arma::join_vert(state_matrix, states.v, states.w, states.psi);
 	state_matrix = arma::join_vert(state_matrix, states.theta, states.phi);
-
+	int num_features = state_matrix.n_rows*(state_matrix.n_rows+1)/2; //8*(8-1)/2
 	arma::mat candidate_functions(num_features, states.num_samples);
+	//Index to keep track of insertion into kandidate function6
+	int candidate_index = 0;
 	//Do for all columns
 	for(int i = 0; i <state_matrix.n_cols; i++)
 	{
 		//For each state, multiply by all others
 		for(int j = 0; j < state_matrix.n_rows; j++)
 		{
-			for(int k = 0; k < state_matrix.n_rows; k++)
+			for(int k = j; k < state_matrix.n_rows; k++)
 			{
-				candidate_functions(j,i) = state_matrix(j,i)*state_matrix(k,i);
+				candidate_functions(candidate_index,i) = state_matrix(j,i)*state_matrix(k,i);
+				candidate_index++;
 			}
 		}
+		candidate_index = 0;
 	}
 	assert(candidate_functions.n_rows == num_features);
 	return candidate_functions;
