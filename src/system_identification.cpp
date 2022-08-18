@@ -250,15 +250,46 @@ interpolate(Data_Buffer data, int sample_rate)
 	return state_buffer;
 }
 
-arma::mat SID::
-STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float lambda)
+arma::uvec SID::
+threshold_vector(arma::vec vector, float threshold, string mode)
+{
+    std::vector<uint> index;
+    if(mode == "below")
+    {
+        for(int i = 0; i < vector.size(); i++)
+        {
+            if(std::abs(vector(i)) < threshold)
+            {
+                index.push_back(i);
+            }
+        }
+    }
+    else if(mode == "above")
+    {
+        for(int i = 0; i < vector.size(); i++)
+        {
+            if(std::abs(vector(i)) > threshold)
+            {
+                index.push_back(i);
+            }
+        }        
+    }
+    arma::uvec thresholded_indexes = arma::conv_to<arma::uvec>::from(index);
+    return thresholded_indexes;
+}
+
+arma::mat 
+SID::STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float lambda)
 {
 	//states are row indexes
 	//features are row indexes
 	//time domain samples are column indexes
 	bool notConverged = true;
-	int iteration = 0;
+	int iteration;
 	int max_iterations = 10;
+
+    //Normalize candidates with respect to stdev
+    //candidate_functions = candidate_functions/candidate_functions.max();
 
 	using namespace mlpack::regression;
 	//To store result of STLSQ
@@ -267,6 +298,8 @@ STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float la
 	//Do STLSQ for each state
 	for(int i = 0; i < states.n_rows; i++)
 	{
+        iteration = 0;
+        notConverged = true;
 		//Keep track of which candidate functions have been discarded, so we can match resulting coefficents to candidate functions
 		arma::uvec coefficient_indexes(candidate_functions.n_rows);
 		//For each state, fill the column with indexes 0 to number of candidate functions
@@ -274,22 +307,23 @@ STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float la
 		{
 			coefficient_indexes(j) = j;
 		}
+        arma::mat loop_candidate_functions = candidate_functions; //Keep copy since we will delete portions when thresholding
 		arma::rowvec state = states.row(i); //Get derivatives for current state
 		LinearRegression lr(candidate_functions, state, lambda, false); //Initial regression on the candidate functions
 		arma::vec loop_coefficients = lr.Parameters();
 		//Do subsequent regressions until converged
 		while(notConverged && iteration < max_iterations)
 		{
-			loop_coefficients.print();
-			arma::uvec below_index = arma::find(loop_coefficients<threshold); //Find indexes of coefficients which are lower than the threshold value
-			below_index.print();
+			arma::uvec below_index = threshold_vector(loop_coefficients, threshold, "below"); //Find indexes of coefficients which are lower than the threshold value
 			coefficient_indexes.shed_rows(below_index); //Remove indexes which correspond to thresholded values
-			arma::uvec above_index = arma::find(loop_coefficients>threshold); //Find indexes of coefficients which are higher than the threshold value
-			lr.Train(candidate_functions.rows(above_index), state, false); //Regress again on thresholded candidate functions
-			//Check if coefficient vector has changed in size since last iteration
+            loop_candidate_functions.shed_rows(below_index);
+			arma::uvec above_index = threshold_vector(loop_coefficients, threshold, "above"); //Find indexes of coefficients which are higher than the threshold value
+            //lr.Train(candidate_functions.rows(above_index), state, false); //Regress again on thresholded candidate functions
+			lr.Train(loop_candidate_functions, state, false); //Initial regression on the candidate functions
+            //Check if coefficient vector has changed in size since last iteration
 			if(lr.Parameters().size() == loop_coefficients.size())
 			{
-				notConverged = false; //If thresholding hasn't shrunk the coefficient vector, we have converged
+				//notConverged = false; //If thresholding hasn't shrunk the coefficient vector, we have converged
 			}
 			loop_coefficients = lr.Parameters();
 			iteration++; //Keep track of iteration number
@@ -303,9 +337,9 @@ STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float la
 		}
 		
 		//Match coefficients to their candidate functions
-		arma::vec state_coefficients(candidate_functions.n_rows);
-		state_coefficients.zeros();
-		for(int k = 0; k < coefficient_indexes.size(); k++)
+		arma::vec state_coefficients = arma::zeros(candidate_functions.n_rows);
+        //std::assert(coefficient_indexes.n_rows == loop_coefficients.n_rows);
+		for(int k = 0; k < coefficient_indexes.n_rows; k++)
 		{
 			state_coefficients(coefficient_indexes(k)) = loop_coefficients(k);
 		}

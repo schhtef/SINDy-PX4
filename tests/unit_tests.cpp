@@ -5,17 +5,14 @@
 #include <math.h>
 #include <mlpack/methods/linear_regression/linear_regression.hpp>
 #include "csv.h"
-#include "system_identification.h"
 //#include "interpolate.h"
 
 using namespace std;
 void matrix_to_csv(vector<vector<float>> matrix, string filename, string header);
 void matrix_to_csv(vector<float> matrix, string filename, string header);
-template <typename T, typename U>
-void lerp_vector(std::vector<T> y, std::vector<U> x, std::vector<T> &y_result, std::vector<U> &x_result, U start, U end, int sample_rate);
-
-template <typename T, typename U>
-T linear_interp(T y0, T y1, U x0, U x1, U x);
+arma::mat STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float lambda);
+arma::uvec threshold_vector(arma::vec vector, float , string mode);
+arma::mat compute_candidate_functions(arma::mat states);
 
 int main()
 {
@@ -24,14 +21,15 @@ int main()
     * dx/dt = -0.1x + 2y
     * dy/dt = -2x -0.1y
     */
-
-    int num_iterations = 100;
+/*
+    int num_iterations = 25;
     int num_states = 2;
-    int num_features = 4;
+    int num_features = 3;
 
     using namespace mlpack::regression;
     arma::mat data(num_features, num_iterations); // The dataset itself.
-    arma::rowvec responses(num_iterations); // The responses, one row for each row in data.
+    arma::mat responses(num_states, num_iterations); // The responses, one row for each row in data.
+    arma::mat states(num_iterations, num_states); // The dataset itself.
     // Regress.
 
     double x = 2;
@@ -40,8 +38,8 @@ int main()
 
     for ( int i = 0; i < num_iterations; i++ )
     {
-        double d_x = -1*x+10*x*y;
-        double d_y = -2*x-0.1*x*y;
+        double d_x = -0.1*x + 2*y;
+        double d_y = -2*x - 0.1*y;
 
         x = x+dt*d_x;
         y = y+dt*d_y;
@@ -49,13 +47,42 @@ int main()
         data(0, i) = 1;
         data(1, i) = x;
         data(2, i) = y;
-        data(3, i) = x*y;
+        //data(3, i) = x*y;
 
-        responses(i) = d_x;
+        states(i, 0) = x;
+        states(i, 1) = y;
+
+        responses(0,i) = d_x;
+        responses(1,i) = d_y;
+
     }
-    SID SINDy();
-    SINDy.STLSQ();
+    */
+    /*
+    arma::field<std::string> header(data.n_rows);
+    header(0) = "dx";
+    header(1) = "dy";
+    arma::mat datat = responses.t(); // The dataset itself.
+    datat.save("derivatives.csv",arma::csv_ascii);
+    states.save("states.csv", arma::csv_ascii);
+    */
+    //LinearRegression lr(data, responses.row(0), 0.05, false); //Initial regression on the candidate functions 
+    //lr.Parameters().print();
 
+
+    arma::mat states;
+    states.load("lorenz_states.csv");
+    arma::mat derivatives;
+    derivatives.load("lorenz_derivatives.csv");
+    arma::mat candidate_functions = compute_candidate_functions(states);
+    arma::mat candt = candidate_functions.t();
+    candt.save("candidates.csv", arma::csv_ascii);
+	auto t1 = std::chrono::high_resolution_clock::now();
+    arma::mat ceofficients = STLSQ(derivatives.t(), candidate_functions, 0.05, 0.01);
+	auto t2 = std::chrono::high_resolution_clock::now();
+    ceofficients.print();
+
+    auto SINDy_time = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+	std::cout << "SINDy: " << SINDy_time.count() << "us\n";
 
 /*
     //Generate data to interpolate
@@ -83,74 +110,137 @@ int main()
     return 0;
 }
 
-template <typename T, typename U>
-void lerp_vector(std::vector<T> y, std::vector<U> x, std::vector<T> &y_result, std::vector<U> &x_result, U start, U end, int sample_rate)
+arma::mat
+compute_candidate_functions(arma::mat states)
 {
-    if(x.size() != y.size())
+	//Compute desired candidate functions from input buffer
+	//Generate ones
+	int num_features = (states.n_cols+1)*(states.n_cols+2)/2; //8*(8-1)/2
+    arma::mat candidate_functions(num_features, states.n_rows);
+
+	arma::rowvec bias(states.n_rows);
+	bias.ones();
+	//join states into matrix so we can iterate over them all
+	arma::mat state_matrix = states.t();
+    state_matrix = arma::join_vert(bias, state_matrix);
+	//Index to keep track of insertion into kandidate function6
+	int candidate_index = 0;
+	//Do for all columns
+	for(int i = 0; i <state_matrix.n_cols; i++)
+	{
+		//For each state, multiply by all others
+		for(int j = 0; j < state_matrix.n_rows; j++)
+		{
+			for(int k = j; k < state_matrix.n_rows; k++)
+			{
+				candidate_functions(candidate_index,i) = state_matrix(j,i)*state_matrix(k,i);
+				candidate_index++;
+			}
+		}
+		candidate_index = 0;
+	}
+	assert(candidate_functions.n_rows == num_features);
+	return candidate_functions;
+}
+
+arma::mat STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float lambda)
+{
+	//states are row indexes
+	//features are row indexes
+	//time domain samples are column indexes
+	bool notConverged = true;
+	int iteration;
+	int max_iterations = 10;
+
+    //Normalize candidates with respect to stdev
+    //candidate_functions = candidate_functions/candidate_functions.max();
+
+	using namespace mlpack::regression;
+	//To store result of STLSQ
+	arma::mat coefficients(candidate_functions.n_rows, states.n_rows);
+	
+	//Do STLSQ for each state
+	for(int i = 0; i < states.n_rows; i++)
+	{
+        iteration = 0;
+        notConverged = true;
+		//Keep track of which candidate functions have been discarded, so we can match resulting coefficents to candidate functions
+		arma::uvec coefficient_indexes(candidate_functions.n_rows);
+		//For each state, fill the column with indexes 0 to number of candidate functions
+		for(int j = 0; j < candidate_functions.n_rows; j++)
+		{
+			coefficient_indexes(j) = j;
+		}
+        arma::mat loop_candidate_functions = candidate_functions; //Keep copy since we will delete portions when thresholding
+		arma::rowvec state = states.row(i); //Get derivatives for current state
+		LinearRegression lr(candidate_functions, state, lambda, false); //Initial regression on the candidate functions
+		arma::vec loop_coefficients = lr.Parameters();
+		//Do subsequent regressions until converged
+		while(notConverged && iteration < max_iterations)
+		{
+			arma::uvec below_index = threshold_vector(loop_coefficients, threshold, "below"); //Find indexes of coefficients which are lower than the threshold value
+			coefficient_indexes.shed_rows(below_index); //Remove indexes which correspond to thresholded values
+            loop_candidate_functions.shed_rows(below_index);
+			arma::uvec above_index = threshold_vector(loop_coefficients, threshold, "above"); //Find indexes of coefficients which are higher than the threshold value
+            //lr.Train(candidate_functions.rows(above_index), state, false); //Regress again on thresholded candidate functions
+			lr.Train(loop_candidate_functions, state, false); //Initial regression on the candidate functions
+            //Check if coefficient vector has changed in size since last iteration
+			if(lr.Parameters().size() == loop_coefficients.size())
+			{
+				//notConverged = false; //If thresholding hasn't shrunk the coefficient vector, we have converged
+			}
+			loop_coefficients = lr.Parameters();
+			iteration++; //Keep track of iteration number
+		}
+
+		if(loop_coefficients.size() == 0)
+		{
+			fprintf(stderr, "Thresholding parameter set too low and removed all coefficients in state %d\n", i);
+			coefficients.col(i).zeros(); //Set all coefficients to zero and don't attempt to match indexes
+			break;
+		}
+		
+		//Match coefficients to their candidate functions
+		arma::vec state_coefficients = arma::zeros(candidate_functions.n_rows);
+        //std::assert(coefficient_indexes.n_rows == loop_coefficients.n_rows);
+		for(int k = 0; k < coefficient_indexes.n_rows; k++)
+		{
+			state_coefficients(coefficient_indexes(k)) = loop_coefficients(k);
+		}
+		//loop coefficients is too small for the coefficient matrix
+		coefficients.col(i) = state_coefficients; //Solution for current state
+	}
+	return coefficients;
+}
+
+arma::uvec
+threshold_vector(arma::vec vector, float threshold, string mode)
+{
+    std::vector<uint> index;
+    if(mode == "below")
     {
-        fprintf(stderr, "Caution: X and Y series are different sizes\n");
-    }
-    //Since we are interpolating to a common time series, the result should be reset until the very last interpolation
-    if(x_result.size() != 0)
-    {
-        x_result.clear();
-    }
-    // Linearly interpolate local position from first_sample_time, if this vector has the first sample time,
-    // first interpolant will just be the first sample
-	typename std::vector<T>::iterator y_iterator = y.begin();
-	typename std::vector<U>::iterator x_iterator = x.begin();
-
-    float sample_period = 1/(float)sample_rate;
-    U interpolant_time = start;
-    // Outputs
-    //std::vector<T> y_result;
-    //std::vector<T> x_result;
-    // Loop variables
-    T y_interpolant;
-    U x_interpolant;
-
-    // Interpolate until we reach the last sample time, or the end of the vector is reached, which is unexpected
-    while(interpolant_time <= end)
-    {
-        // Interpolate consecutive variables
-        x_interpolant = interpolant_time;
-        y_interpolant = linear_interp(*(y_iterator), (*y_iterator+1),*(x_iterator), (*x_iterator+1), interpolant_time);
-
-        // Push interpolated value into a new vector
-        y_result.push_back(y_interpolant);
-        x_result.push_back(x_interpolant);
-
-        // Increment interpolant time
-        interpolant_time = interpolant_time+(sample_period);
-
-        // If interpolant time is greater than the next sample, increment the iterator
-        // If the interpolant time is equal, the next loop will just result in the true sample, no interpolation
-        // This covers the extrapolation case a the beginning and end of the vector
-        // If the vector's first sample is after the start time, interpolant_time will keep increasing.
-        // If the vector's last sample is before the end time, interpolant_time will keep increasing but the iterators will not
-        if((interpolant_time > (*x_iterator)) && x_iterator != x.end())
+        for(int i = 0; i < vector.size(); i++)
         {
-            y_iterator++;
-            x_iterator++;
+            if(std::abs(vector(i)) < threshold)
+            {
+                index.push_back(i);
+            }
         }
     }
-    // Sanity Checks
-    if(x_result.size() != y_result.size())
+    else if(mode == "above")
     {
-        fprintf(stderr, "Caution: X and Y results are different sizes\n");
+        for(int i = 0; i < vector.size(); i++)
+        {
+            if(std::abs(vector(i)) > threshold)
+            {
+                index.push_back(i);
+            }
+        }        
     }
-
-    assert(x_result.size() == ((end-start))*sample_rate);
+    arma::uvec thresholded_indexes = arma::conv_to<arma::uvec>::from(index);
+    return thresholded_indexes;
 }
 
-template <typename T, typename U>
-T linear_interp(T y0, T y1, U x0, U x1, U x)
-{
-    // Returns y0*(x1-x)/(x1-x0) + y1*(x-x0)/(x1-x0)
-    // Type casting with (T) to ensure output is of type T
-    T retval = y0*(((float)x1-(float)x)/((float)x1-(float)x0))+y1*(((float)x-(float)x0)/((float)x1-(float)x0));
-    return retval;
-}
 
 void matrix_to_csv(std::vector<float> matrix, string filename, string header)
 {

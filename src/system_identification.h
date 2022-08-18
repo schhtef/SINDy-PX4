@@ -78,6 +78,7 @@ public:
     void stop();
     void handle_quit(int sig);
 
+    arma::uvec threshold_vector(arma::vec vector, float threshold, string mode);
     Vehicle_States interpolate(Data_Buffer data, int sample_rate);
     arma::mat compute_candidate_functions(Vehicle_States states);
     arma::mat STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float lambda);
