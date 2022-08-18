@@ -68,6 +68,9 @@ int main()
     //LinearRegression lr(data, responses.row(0), 0.05, false); //Initial regression on the candidate functions 
     //lr.Parameters().print();
 
+    //arma::mat ceofficients = STLSQ(responses, data, 0.05, 0.05);
+    //ceofficients.print();
+
 
     arma::mat states;
     states.load("lorenz_states.csv");
@@ -76,13 +79,20 @@ int main()
     arma::mat candidate_functions = compute_candidate_functions(states);
     arma::mat candt = candidate_functions.t();
     candt.save("candidates.csv", arma::csv_ascii);
-	auto t1 = std::chrono::high_resolution_clock::now();
-    arma::mat ceofficients = STLSQ(derivatives.t(), candidate_functions, 0.05, 0.01);
-	auto t2 = std::chrono::high_resolution_clock::now();
-    ceofficients.print();
+    arma::vec time(1000);
+    for(int i = 0; i < 1000; i++)
+    {
+        auto t1 = std::chrono::high_resolution_clock::now();
+        arma::mat ceofficients = STLSQ(derivatives.t(), candidate_functions, 0.05, 0.05);
+        auto t2 = std::chrono::high_resolution_clock::now();
+        auto SINDy_time = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+        time(i) = SINDy_time.count();
+        printf("%d\n", i);
+    }
 
-    auto SINDy_time = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-	std::cout << "SINDy: " << SINDy_time.count() << "us\n";
+	std::cout << "Mean SINDy: " << mean(time) << "us\n";
+	std::cout << "StDev SINDy: " << stddev(time) << "us\n";
+    
 
 /*
     //Generate data to interpolate

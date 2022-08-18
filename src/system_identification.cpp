@@ -42,6 +42,7 @@ void SID::
 compute_thread()
 {
     compute_status = true;
+	arma::running_stat<double> stats;
     while ( ! time_to_exit )
 	{ 
 		auto t1 = std::chrono::high_resolution_clock::now();
@@ -64,11 +65,16 @@ compute_thread()
 
 		log_coeff(coefficients, "coefficients.csv");
 
+		stats(SINDy_time.count());
 		std::cout << "Buffer Clear: " << clear_buffer_time.count() << "ms\n";
 		std::cout << "Interpolation: " << interpolation_time.count() << "us\n";
 		std::cout << "Candidate Functions: " << candidate_computation_time.count() << "us\n";
 		std::cout << "Derivative Parse: " << derivative_time.count() << "us\n";
 		std::cout << "SINDy: " << SINDy_time.count() << "us\n";
+		std::cout << "SINDy Average: " << stats.mean() << "us\n";
+		std::cout << "SINDy: " << stats.stddev() << "us\n";
+
+		coefficients.print();
 
 		//Log Results
 		
