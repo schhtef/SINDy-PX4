@@ -22,41 +22,40 @@ int main()
     * dy/dt = -2x -0.1y
     */
 /*
-    int num_iterations = 25;
-    int num_states = 2;
-    int num_features = 3;
+    int num_iterations = 1000;
+    int num_states = 3;
+    int num_features = 10;
 
     using namespace mlpack::regression;
-    arma::mat data(num_features, num_iterations); // The dataset itself.
-    arma::mat responses(num_states, num_iterations); // The responses, one row for each row in data.
+    arma::mat derivatives(num_states, num_iterations); // The responses, one row for each row in data.
     arma::mat states(num_iterations, num_states); // The dataset itself.
     // Regress.
 
-    double x = 2;
-    double y = 0;
+    double x = -8;
+    double y = 8;
+    double z = 27;
+
     double dt = 0.01;
 
     for ( int i = 0; i < num_iterations; i++ )
     {
-        double d_x = -0.1*x + 2*y;
-        double d_y = -2*x - 0.1*y;
+        double d_x = 10*(y-x);
+        double d_y = x*(28-z)-y;
+        double d_z = x*y-(8/3)*z;
 
         x = x+dt*d_x;
         y = y+dt*d_y;
-
-        data(0, i) = 1;
-        data(1, i) = x;
-        data(2, i) = y;
-        //data(3, i) = x*y;
+        z = z+dt*d_z;
 
         states(i, 0) = x;
         states(i, 1) = y;
+        states(i, 2) = z;
 
-        responses(0,i) = d_x;
-        responses(1,i) = d_y;
-
+        derivatives(0,i) = d_x;
+        derivatives(1,i) = d_y;
+        derivatives(2,i) = d_z;
     }
-    */
+*/
     /*
     arma::field<std::string> header(data.n_rows);
     header(0) = "dx";
@@ -65,10 +64,11 @@ int main()
     datat.save("derivatives.csv",arma::csv_ascii);
     states.save("states.csv", arma::csv_ascii);
     */
+
     //LinearRegression lr(data, responses.row(0), 0.05, false); //Initial regression on the candidate functions 
     //lr.Parameters().print();
-
-    //arma::mat ceofficients = STLSQ(responses, data, 0.05, 0.05);
+    //arma::mat candidate_functions = compute_candidate_functions(states);
+   //arma::mat ceofficients = STLSQ(derivatives, candidate_functions, 0.5, 0.1);
     //ceofficients.print();
 
 
@@ -79,20 +79,21 @@ int main()
     arma::mat candidate_functions = compute_candidate_functions(states);
     arma::mat candt = candidate_functions.t();
     candt.save("candidates.csv", arma::csv_ascii);
-    arma::vec time(1000);
-    for(int i = 0; i < 1000; i++)
+    arma::vec time(50);
+    arma::mat ceofficients;
+    for(int i = 0; i < 50; i++)
     {
         auto t1 = std::chrono::high_resolution_clock::now();
-        arma::mat ceofficients = STLSQ(derivatives.t(), candidate_functions, 0.05, 0.05);
+        ceofficients = STLSQ(derivatives.t(), candidate_functions, 0.05, 0.05);
         auto t2 = std::chrono::high_resolution_clock::now();
         auto SINDy_time = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
         time(i) = SINDy_time.count();
-        printf("%d\n", i);
+        //printf("%d\n", i);
     }
-
+    ceofficients.print();
 	std::cout << "Mean SINDy: " << mean(time) << "us\n";
 	std::cout << "StDev SINDy: " << stddev(time) << "us\n";
-    
+
 
 /*
     //Generate data to interpolate
@@ -197,7 +198,7 @@ arma::mat STLSQ(arma::mat states, arma::mat candidate_functions, float threshold
             //Check if coefficient vector has changed in size since last iteration
 			if(lr.Parameters().size() == loop_coefficients.size())
 			{
-				//notConverged = false; //If thresholding hasn't shrunk the coefficient vector, we have converged
+				notConverged = false; //If thresholding hasn't shrunk the coefficient vector, we have converged
 			}
 			loop_coefficients = lr.Parameters();
 			iteration++; //Keep track of iteration number
