@@ -21,6 +21,8 @@
 #include <condition_variable>
 #include <vector>       // std::vector
 #include <algorithm>    // std::copy
+#include <assert.h>
+#include <chrono>
 
 using namespace std;
 
@@ -107,6 +109,8 @@ class Buffer
 {
     int buffer_length;
     int buffer_counter = 0;
+    int clear_time;
+    string buffer_mode = "";
 
     Data_Buffer buffer;
     std::mutex mtx;
@@ -115,7 +119,7 @@ class Buffer
 
 public:
     Buffer();
-    Buffer(int buffer_length_);
+    Buffer(int buffer_length_, string buffer_mode);
     ~Buffer();
 
     void insert(mavlink_message_t message);

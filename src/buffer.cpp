@@ -26,10 +26,14 @@ Buffer()
 
 
 Buffer::
-Buffer(int buffer_length_)
+Buffer(int buffer_length_, string buffer_mode_)
 {
+	assert(buffer_mode_ == "time" || buffer_mode_ == "length");
+	buffer_mode = buffer_mode_;
 	buffer_length = buffer_length_;
-
+	//Get time of construction to keep track of training time
+	auto now = std::chrono::high_resolution_clock::now();
+ 	clear_time = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
 }
 
 
@@ -51,7 +55,7 @@ void Buffer::insert(mavlink_message_t message)
 	// the calling thread waits on the not_full condition variable until the consumer notifies it is empty
 	not_full.wait(unique_lock, [this]()
 	{
-		return buffer_counter != buffer_length; 
+		return buffer_counter < buffer_length; 
 	});
 
 	// Switch on message type to put into the appropriate vector
@@ -141,10 +145,21 @@ void Buffer::insert(mavlink_message_t message)
 		}
 	}
 
-	buffer_counter = buffer.find_max_length();
-	// If one of the input buffers has reached the maximum length, notify that the buffer is full
+	if(buffer_mode == "length")
+	{
+		// If one of the input buffers has reached the maximum length, notify that the buffer is full
+		buffer_counter = buffer.find_max_length();
+	}
+	else if(buffer_mode == "time")
+	{
+		//Find current time in s
+		auto now = std::chrono::high_resolution_clock::now();
+		//Buffer counter is the time since
+		buffer_counter = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count() - clear_time; 
+	}
 
-	if(buffer_counter == buffer_length)
+
+	if(buffer_counter >= buffer_length)
 	{
 		// Notify blocked thread that buffer is full
 		full.notify_one();
@@ -175,7 +190,17 @@ Buffer::clear()
 	
 	// Empty buffer
 	buffer.clear_buffers();
-	buffer_counter = 0;
+	if(buffer_mode == "length")
+	{
+		buffer_counter = 0;
+	}
+	else if(buffer_mode == "time")
+	{
+		//Set buffer counter to 0 and save clearing time
+		auto now = std::chrono::high_resolution_clock::now();
+		clear_time = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+		buffer_counter = 0;
+	}
 
     // Notify a single thread that the buffer isn't full
 	not_full.notify_one();

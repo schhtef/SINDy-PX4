@@ -77,16 +77,17 @@ top (int argc, char **argv)
 	char *uart_name = (char*)"/dev/ttyUSB0";
 #endif
 	int baudrate = 57600;
-
 	bool use_udp = false;
 	char *udp_ip = (char*)"127.0.0.1";
 	int udp_port = 14540;
 	bool autotakeoff = false;
 	string logfile_directory = "/home/stefan/Documents/PX4-SID/tests/";
+	string buffer_mode = "length";
 	int buffer_length = 100;
 
 	// do the parse, will throw an int if it fails
-	parse_commandline(argc, argv, uart_name, baudrate, use_udp, udp_ip, udp_port, autotakeoff, logfile_directory, &buffer_length);
+	parse_commandline(argc, argv, uart_name, baudrate, use_udp, udp_ip, udp_port, 
+						autotakeoff, logfile_directory, buffer_length, buffer_mode);
 	
 	// --------------------------------------------------------------------------
 	//   PORT and THREAD STARTUP
@@ -122,7 +123,7 @@ top (int argc, char **argv)
 	 * associated with a Mavlink type which is passed into the SID
 	 *
 	 */
-	Buffer input_buffer(buffer_length);
+	Buffer input_buffer(buffer_length, buffer_mode);
 	
 	/*
 	 * Instantiate a system identification object
@@ -215,11 +216,12 @@ commands(Autopilot_Interface &api, SID &SINDy, bool autotakeoff, string logfile_
 	// Primary event variables
 	int flights_since_reboot = 0;
 
-	//Request mavlink streams in addition to defaults
+
 
 	// Prepare command for setting message interval
 	// TODO put command generation into helper function
 	
+	//Request actuator output status messages
 	mavlink_command_int_t com = { 0 };
 	com.target_system    = api.system_id; //Companion system id
 	com.target_component = api.autopilot_id; //Autopilot system id
@@ -227,7 +229,7 @@ commands(Autopilot_Interface &api, SID &SINDy, bool autotakeoff, string logfile_
 	com.param1           = MAVLINK_MSG_ID_ACTUATOR_OUTPUT_STATUS; //Requested Message
 	com.param2           = 100000; //Default message interval
 
-	// Encode
+	// Request wind messages
 	mavlink_message_t message;
 	mavlink_msg_command_int_encode(api.system_id, api.companion_id, &message, &com);
 
@@ -255,15 +257,8 @@ commands(Autopilot_Interface &api, SID &SINDy, bool autotakeoff, string logfile_
 	{
 		fprintf(stderr, "Failed to set message interval\n");
 	}
-
 	// copy current messages
 	Mavlink_Messages messages = api.current_messages;
-
-	// local position in ned frame
-	mavlink_local_position_ned_t pos = messages.local_position_ned;
-	printf("Initial LOCAL_POSITION_NED (spec: https://mavlink.io/en/messages/common.html#LOCAL_POSITION_NED)\n");
-	printf("    pos  (NED):  %f %f %f (m)\n", pos.x, pos.y, pos.z );
-
 	// Primary event loop
 	while(1)
 	{
@@ -301,7 +296,6 @@ commands(Autopilot_Interface &api, SID &SINDy, bool autotakeoff, string logfile_
 				//TODO implement switch to active system identification state
 			break;
 		}
-		//printf("Base Mode: %d\n", api.current_messages.heartbeat.base_mode);
 	}
 	printf("\n");
 
@@ -321,7 +315,7 @@ commands(Autopilot_Interface &api, SID &SINDy, bool autotakeoff, string logfile_
 // throws EXIT_FAILURE if could not open the port
 void
 parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate,
-		bool &use_udp, char *&udp_ip, int &udp_port, bool &autotakeoff, string &filename, int *buffer_length)
+		bool &use_udp, char *&udp_ip, int &udp_port, bool &autotakeoff, string &filename, int &buffer_length, string &buffer_mode)
 {
 
 	// string for command line usage
@@ -398,11 +392,22 @@ parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate,
 			}
 		}
 
-		// buffer
+		// buffer length
 		if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--buffer") == 0) {
 			if (argc > i + 1) {
 				i++;
-				*buffer_length = atoi(argv[i]);
+				buffer_length = atoi(argv[i]);
+			} else {
+				printf("%s\n",commandline_usage);
+				throw EXIT_FAILURE;
+			}
+		}
+
+		// buffer mode
+		if (strcmp(argv[i], "-m") == 0 || strcmp(argv[i], "--mode") == 0) {
+			if (argc > i + 1) {
+				i++;
+				buffer_mode = (argv[i]);
 			} else {
 				printf("%s\n",commandline_usage);
 				throw EXIT_FAILURE;

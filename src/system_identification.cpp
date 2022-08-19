@@ -47,6 +47,7 @@ compute_thread()
 	{ 
 		auto t1 = std::chrono::high_resolution_clock::now();
         Data_Buffer data = input_buffer->clear();
+		printf("Buffer Cleared \n");
 		auto t2 = std::chrono::high_resolution_clock::now();
 		Vehicle_States states = interpolate(data, 200); // Resample input buffer and compute desired states
 		auto t3 = std::chrono::high_resolution_clock::now();
@@ -66,15 +67,18 @@ compute_thread()
 		log_coeff(coefficients, "coefficients.csv");
 
 		stats(SINDy_time.count());
-		std::cout << "Buffer Clear: " << clear_buffer_time.count() << "ms\n";
-		std::cout << "Interpolation: " << interpolation_time.count() << "us\n";
-		std::cout << "Candidate Functions: " << candidate_computation_time.count() << "us\n";
-		std::cout << "Derivative Parse: " << derivative_time.count() << "us\n";
+		//std::cout << "Buffer Clear: " << clear_buffer_time.count() << "ms\n";
+		//std::cout << "Interpolation: " << interpolation_time.count() << "us\n";
+		//std::cout << "Candidate Functions: " << candidate_computation_time.count() << "us\n";
+		//std::cout << "Derivative Parse: " << derivative_time.count() << "us\n";
 		std::cout << "SINDy: " << SINDy_time.count() << "us\n";
 		std::cout << "SINDy Average: " << stats.mean() << "us\n";
 		std::cout << "SINDy: " << stats.stddev() << "us\n";
+		std::cout << "Buffer Size: " << states.num_samples << " samples\n";
 
-		coefficients.print();
+
+
+		//coefficients.print();
 
 		//Log Results
 		
