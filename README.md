@@ -42,3 +42,5 @@ Specifies whether to fill the shared buffer with -s number of items or -s number
 
 ### Log File Location
 `-l <file location>`
+
+Specifies the file location for the logged model coefficients. It currently names the files automatically based on the flight number. 
