@@ -10,7 +10,7 @@ Currently uses the mlpack library for ridge regression which is based on the Arm
 3. Startup the gazebo simulation by running `make px4_sitl gazebo` within the root directory
 4. Run the QGroundControl.appimage
 5. Build the project by running `make SID_control_SIL` to build using the c++20 compiler
-6. Start SID_Control_SIL by running `./build/SID_control_SIL -u 127.0.0.1 -p 14540 -s 100` from the PX4-SID root directory
+6. Start SID_Control_SIL by running `./build/SID_control_SIL -u 127.0.0.1 -p 14540 -s 100 -m length -l logs/` from the PX4-SID root directory to run with a buffer size of 100 items and a logfile in the logs/ folder.
 
 ## HIL Run Instructions
 1. Follow steps 1-4 of the SIL instructions.
@@ -19,7 +19,7 @@ Currently uses the mlpack library for ridge regression which is based on the Arm
 5. Start SID_Control by running `./build/SID_control -u 127.0.0.1 -p 14540 -s 100` from the PX4-SID root directory
 
 ## CMD Line Options
-For simulation with gazebo, the three important parameters is the UDP port and IP address, and the buffer length.
+For simulation with gazebo, the five important arguments are the UDP port, IP address, buffer length, buffer mode, and logfile location.
 
 ### UDP IP
 `-u <udp ip address>`
