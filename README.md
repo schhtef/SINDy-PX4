@@ -2,7 +2,7 @@
 Companion computer software for System Identification using PX4
 
 ## Dependencies
-Currently uses the mlpack library for ridge regression which is based on the Armadillo library for matrix operations. Install the [https://www.mlpack.org/](mlpack static library) which will include all its dependencies.
+Currently uses the mlpack library for ridge regression which is based on the Armadillo library for matrix operations. Install the [mlpack library](https://www.mlpack.org/) and all its dependencies.
 
 ## SIL Run Instructions
 1. Download the [QGroundControl .appimage](http://qgroundcontrol.com/downloads/)
@@ -35,8 +35,10 @@ Port number for the UDP connection to a virtual or physical PX4. Use 14540 as th
 
 An integer which denotes how long the input buffer for SINDy is.
 
+### Buffer Mode
+`-m <file location>`
+
+Specifies whether to fill the shared buffer with -s number of items or -s number of seconds
+
 ### Log File Location
 `-l <file location>`
-
-Specifies the desired file location to save generated log files. Do not include filename.
-
