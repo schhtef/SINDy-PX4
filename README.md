@@ -1,8 +1,8 @@
-# PX4-SID
-Companion computer software for System Identification using PX4
+# SINDy-PX4
+Companion computer software for UAV system identification using the [Sparse Identification of Nonlinear Dynamics](https://www.pnas.org/doi/10.1073/pnas.1517384113) (SINDy) method. This project was submitted as my honors thesis in Computer Engineering at the University of Victoria. The thesis can be read [here]() for more information.
 
 ## Dependencies
-Currently uses the mlpack library for ridge regression which is based on the Armadillo library for matrix operations. Install the [mlpack library](https://www.mlpack.org/) and all its dependencies.
+Uses the mlpack library for regression algorithms which is based on the Armadillo library for matrix operations. Install the [mlpack library](https://www.mlpack.org/) and all its dependencies. It also makes extensive use of the [Armadillo library](http://arma.sourceforge.net/) for matrix operations.
 
 ## SIL Run Instructions
 1. Download the [QGroundControl .appimage](http://qgroundcontrol.com/downloads/)
