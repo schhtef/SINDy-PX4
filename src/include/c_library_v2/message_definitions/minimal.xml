@@ -127,11 +127,11 @@
       <entry value="18" name="MAV_TYPE_ONBOARD_CONTROLLER">
         <description>Onboard companion controller</description>
       </entry>
-      <entry value="19" name="MAV_TYPE_VTOL_DUOROTOR">
-        <description>Two-rotor Tailsitter VTOL that additionally uses control surfaces in vertical operation. Note: should be named MAV_TYPE_VTOL_TAILSITTER_DUOROTOR.</description>
+      <entry value="19" name="MAV_TYPE_VTOL_TAILSITTER_DUOROTOR">
+        <description>Two-rotor Tailsitter VTOL that additionally uses control surfaces in vertical operation. Note, value previously named MAV_TYPE_VTOL_DUOROTOR.</description>
       </entry>
-      <entry value="20" name="MAV_TYPE_VTOL_QUADROTOR">
-        <description>Quad-rotor Tailsitter VTOL using a V-shaped quad config in vertical operation. Note: should be named MAV_TYPE_VTOL_TAILSITTER_QUADROTOR.</description>
+      <entry value="20" name="MAV_TYPE_VTOL_TAILSITTER_QUADROTOR">
+        <description>Quad-rotor Tailsitter VTOL using a V-shaped quad config in vertical operation. Note: value previously named MAV_TYPE_VTOL_QUADROTOR.</description>
       </entry>
       <entry value="21" name="MAV_TYPE_VTOL_TILTROTOR">
         <description>Tiltrotor VTOL. Fuselage and wings stay (nominally) horizontal in all flight phases. It able to tilt (some) rotors to provide thrust in cruise flight.</description>
@@ -690,8 +690,8 @@
         <description>Component handling TUNNEL messages (e.g. vendor specific GUI of a component).</description>
       </entry>
       <entry value="250" name="MAV_COMP_ID_SYSTEM_CONTROL">
-        <deprecated since="2018-11" replaced_by="MAV_COMP_ID_ALL">System control does not require a separate component ID.</deprecated>
-        <description>Component for handling system messages (e.g. to ARM, takeoff, etc.).</description>
+        <deprecated since="2018-11" replaced_by="MAV_COMP_ID_ALL">System control does not require a separate component ID. Instead, system commands should be sent with target_component=MAV_COMP_ID_ALL allowing the target component to use any appropriate component id.</deprecated>
+        <description>Deprecated, don't use. Component for handling system messages (e.g. to ARM, takeoff, etc.).</description>
       </entry>
     </enum>
   </enums>

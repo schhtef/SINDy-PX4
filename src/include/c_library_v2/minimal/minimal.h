@@ -10,8 +10,7 @@
     #error Wrong include order: MAVLINK_MINIMAL.H MUST NOT BE DIRECTLY USED. Include mavlink.h from the same directory instead or set ALL AND EVERY defines from MAVLINK.H manually accordingly, including the #define MAVLINK_H call.
 #endif
 
-#undef MAVLINK_THIS_XML_HASH
-#define MAVLINK_THIS_XML_HASH 5029290190896841901
+#define MAVLINK_MINIMAL_XML_HASH 5516859404988479480
 
 #ifdef __cplusplus
 extern "C" {
@@ -88,8 +87,8 @@ typedef enum MAV_TYPE
    MAV_TYPE_FLAPPING_WING=16, /* Flapping wing | */
    MAV_TYPE_KITE=17, /* Kite | */
    MAV_TYPE_ONBOARD_CONTROLLER=18, /* Onboard companion controller | */
-   MAV_TYPE_VTOL_DUOROTOR=19, /* Two-rotor Tailsitter VTOL that additionally uses control surfaces in vertical operation. Note: should be named MAV_TYPE_VTOL_TAILSITTER_DUOROTOR. | */
-   MAV_TYPE_VTOL_QUADROTOR=20, /* Quad-rotor Tailsitter VTOL using a V-shaped quad config in vertical operation. Note: should be named MAV_TYPE_VTOL_TAILSITTER_QUADROTOR. | */
+   MAV_TYPE_VTOL_TAILSITTER_DUOROTOR=19, /* Two-rotor Tailsitter VTOL that additionally uses control surfaces in vertical operation. Note, value previously named MAV_TYPE_VTOL_DUOROTOR. | */
+   MAV_TYPE_VTOL_TAILSITTER_QUADROTOR=20, /* Quad-rotor Tailsitter VTOL using a V-shaped quad config in vertical operation. Note: value previously named MAV_TYPE_VTOL_QUADROTOR. | */
    MAV_TYPE_VTOL_TILTROTOR=21, /* Tiltrotor VTOL. Fuselage and wings stay (nominally) horizontal in all flight phases. It able to tilt (some) rotors to provide thrust in cruise flight. | */
    MAV_TYPE_VTOL_FIXEDROTOR=22, /* VTOL with separate fixed rotors for hover and cruise flight. Fuselage and wings stay (nominally) horizontal in all flight phases. | */
    MAV_TYPE_VTOL_TAILSITTER=23, /* Tailsitter VTOL. Fuselage and wings orientation changes depending on flight phase: vertical for hover, horizontal for cruise. Use more specific VTOL MAV_TYPE_VTOL_DUOROTOR or MAV_TYPE_VTOL_QUADROTOR if appropriate. | */
@@ -308,7 +307,7 @@ typedef enum MAV_COMPONENT
    MAV_COMP_ID_UDP_BRIDGE=240, /* Component to bridge MAVLink to UDP (i.e. from a UART). | */
    MAV_COMP_ID_UART_BRIDGE=241, /* Component to bridge to UART (i.e. from UDP). | */
    MAV_COMP_ID_TUNNEL_NODE=242, /* Component handling TUNNEL messages (e.g. vendor specific GUI of a component). | */
-   MAV_COMP_ID_SYSTEM_CONTROL=250, /* Component for handling system messages (e.g. to ARM, takeoff, etc.). | */
+   MAV_COMP_ID_SYSTEM_CONTROL=250, /* Deprecated, don't use. Component for handling system messages (e.g. to ARM, takeoff, etc.). | */
    MAV_COMPONENT_ENUM_END=251, /*  | */
 } MAV_COMPONENT;
 #endif
@@ -331,10 +330,8 @@ typedef enum MAV_COMPONENT
 // base include
 
 
-#undef MAVLINK_THIS_XML_HASH
-#define MAVLINK_THIS_XML_HASH 5029290190896841901
 
-#if MAVLINK_THIS_XML_HASH == MAVLINK_PRIMARY_XML_HASH
+#if MAVLINK_MINIMAL_XML_HASH == MAVLINK_PRIMARY_XML_HASH
 # define MAVLINK_MESSAGE_INFO {MAVLINK_MESSAGE_INFO_HEARTBEAT, MAVLINK_MESSAGE_INFO_PROTOCOL_VERSION}
 # define MAVLINK_MESSAGE_NAMES {{ "HEARTBEAT", 0 }, { "PROTOCOL_VERSION", 300 }}
 # if MAVLINK_COMMAND_24BIT
