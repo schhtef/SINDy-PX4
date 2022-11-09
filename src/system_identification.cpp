@@ -76,8 +76,6 @@ compute_thread()
 		std::cout << "SINDy: " << stats.stddev() << "us\n";
 		std::cout << "Buffer Size: " << states.num_samples << " samples\n";
 
-
-
 		//coefficients.print();
 
 		//Log Results
@@ -294,8 +292,9 @@ SID::STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, flo
 	//states are row indexes
 	//features are row indexes
 	//time domain samples are column indexes
-	bool notConverged = true;
-	int iteration;
+	bool converged = false;
+	int iteration = 0;
+	int coefficientSize = 0;
 	int max_iterations = 10;
 
     //Normalize candidates with respect to stdev
@@ -309,7 +308,9 @@ SID::STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, flo
 	for(int i = 0; i < states.n_rows; i++)
 	{
         iteration = 0;
-        notConverged = true;
+        converged = false;
+		coefficientSize = 0;
+
 		//Keep track of which candidate functions have been discarded, so we can match resulting coefficents to candidate functions
 		arma::uvec coefficient_indexes(candidate_functions.n_rows);
 		//For each state, fill the column with indexes 0 to number of candidate functions
@@ -319,23 +320,22 @@ SID::STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, flo
 		}
         arma::mat loop_candidate_functions = candidate_functions; //Keep copy since we will delete portions when thresholding
 		arma::rowvec state = states.row(i); //Get derivatives for current state
-		LinearRegression lr(candidate_functions, state, lambda, false); //Initial regression on the candidate functions
-		arma::vec loop_coefficients = lr.Parameters();
+		arma::vec loop_coefficients = ridge_regression(candidate_functions, state, lambda); //Initial regression on the candidate functions
+		coefficientSize = loop_coefficients.size();
 		//Do subsequent regressions until converged
-		while(notConverged && iteration < max_iterations)
+		while(!Converged && iteration < max_iterations)
 		{
 			arma::uvec below_index = threshold_vector(loop_coefficients, threshold, "below"); //Find indexes of coefficients which are lower than the threshold value
 			coefficient_indexes.shed_rows(below_index); //Remove indexes which correspond to thresholded values
-            loop_candidate_functions.shed_rows(below_index);
+            loop_candidate_functions.shed_rows(below_index); //Remove indexes which correspond to thresholded values
 			arma::uvec above_index = threshold_vector(loop_coefficients, threshold, "above"); //Find indexes of coefficients which are higher than the threshold value
-            //lr.Train(candidate_functions.rows(above_index), state, false); //Regress again on thresholded candidate functions
-			lr.Train(loop_candidate_functions, state, false); //Initial regression on the candidate functions
+            loop_coefficients = ridge_regression(candidate_functions.rows(above_index), state, lambda); //Regress again on thresholded candidate functions
             //Check if coefficient vector has changed in size since last iteration
-			if(lr.Parameters().size() == loop_coefficients.size())
+			if(coefficientSize == loop_coefficients.size())
 			{
-				//notConverged = false; //If thresholding hasn't shrunk the coefficient vector, we have converged
+				converged = true; //If thresholding hasn't shrunk the coefficient vector, we have converged
 			}
-			loop_coefficients = lr.Parameters();
+			coefficientSize = loop_coefficients.size(); //update with size of coefficient vector
 			iteration++; //Keep track of iteration number
 		}
 
@@ -356,6 +356,19 @@ SID::STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, flo
 		//loop coefficients is too small for the coefficient matrix
 		coefficients.col(i) = state_coefficients; //Solution for current state
 	}
+	return coefficients;
+}
+
+arma::vec SID::
+ridge_regression(arma::mat candidate_functions, arma::rowvec state, float lambda)
+{
+	//Ridge regression is defined by the coefficients \beta = ((X'X+\lamdaI)^-1)X'y
+	//Where X is the design matrix (candidate functions), y are the responses (states), 
+	//and lambda is the regression penalty
+	//Armadillo's linear solver is used to solve for \beta by arranging the expression as
+	//(X'X+\lamdaI)\beta = X'y
+	arma::mat A = candidate_functions * candidate_functions.t() + lambda * arma::eye<arma::mat>(candidate_functions.n_rows, candidate_functions.n_rows);
+	arma::vec coefficients = arma::solve(A, candidate_functions*state.t());
 	return coefficients;
 }
 

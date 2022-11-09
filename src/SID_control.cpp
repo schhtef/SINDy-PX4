@@ -259,6 +259,9 @@ commands(Autopilot_Interface &api, SID &SINDy, bool autotakeoff, string logfile_
 	}
 	// copy current messages
 	Mavlink_Messages messages = api.current_messages;
+	
+	
+	
 	// Primary event loop
 	while(1)
 	{
