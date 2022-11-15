@@ -44,7 +44,7 @@ Buffer::
 }
 
 // Insert a generic mavlink message into the buffer. Parse the desired data points into the data buffer.
-void Buffer::insert(mavlink_message_t message)
+void Buffer::insert(auto message)
 {
 	// thread safe insertion into the buffer, ensures that no insertion occurs when buffer is full
 	// will cause the calling thread to wait if it is full
