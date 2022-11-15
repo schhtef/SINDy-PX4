@@ -1,57 +1,3 @@
-/****************************************************************************
- *
- *   Copyright (c) 2014 MAVlink Development Team. All rights reserved.
- *   Author: Trent Lukaczyk, <aerialhedgehog@gmail.com>
- *           Jaycee Lock,    <jaycee.lock@gmail.com>
- *           Lorenz Meier,   <lm@inf.ethz.ch>
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name PX4 nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- ****************************************************************************/
-
-/**
- * @file mavlink_control.cpp
- *
- * @brief An example offboard control process via mavlink
- *
- * This process connects an external MAVLink UART device to send an receive data
- *
- * @author Trent Lukaczyk, <aerialhedgehog@gmail.com>
- * @author Jaycee Lock,    <jaycee.lock@gmail.com>
- * @author Lorenz Meier,   <lm@inf.ethz.ch>
- *
- */
-
-// ------------------------------------------------------------------------------
-//   Defines
-// ------------------------------------------------------------------------------
-
-
 // ------------------------------------------------------------------------------
 //   Includes
 // ------------------------------------------------------------------------------
@@ -69,13 +15,7 @@ top (int argc, char **argv)
 	// --------------------------------------------------------------------------
 	//   PARSE THE COMMANDS
 	// --------------------------------------------------------------------------
-
-	// Default input arguments
-#ifdef __APPLE__
-	char *uart_name = (char*)"/dev/tty.usbmodem1";
-#else
 	char *uart_name = (char*)"/dev/ttyUSB0";
-#endif
 	int baudrate = 57600;
 	bool use_udp = false;
 	char *udp_ip = (char*)"127.0.0.1";
@@ -90,28 +30,25 @@ top (int argc, char **argv)
 						autotakeoff, logfile_directory, buffer_length, buffer_mode);
 	
 	// --------------------------------------------------------------------------
-	//   PORT and THREAD STARTUP
+	//   Instantiate MAVSDK Object
 	// --------------------------------------------------------------------------
+	using namespace mavsdk;
 
-	/*
-	 * Instantiate a generic port object
-	 *
-	 * This object handles the opening and closing of the offboard computer's
-	 * port over which it will communicate to an autopilot.  It has
-	 * methods to read and write a mavlink_message_t object.  To help with read
-	 * and write in the context of pthreading, it guards port operations with a
-	 * pthread mutex lock. It can be a serial or an UDP port.
-	 *
-	 */
-	Generic_Port *port;
-	if(use_udp)
-	{
-		port = new UDP_Port(udp_ip, udp_port);
+    Mavsdk mavsdk;
+    ConnectionResult connection_result = mavsdk.add_any_connection(argv[1]);
+
+	// Wait for the system to connect
+	while (mavsdk.systems().size() == 0) {
 	}
-	else
-	{
-		port = new Serial_Port(uart_name, baudrate);
+
+	// make sure we have connected successfully to the autopilot
+	if (connection_result != ConnectionResult::Success) {
+		std::cerr << "Connection failed: " << connection_result << '\n';
+		return 1;
 	}
+
+	// assuming one autopilot connected, get a pointer to the first one connected
+	std::shared_ptr<System> system = mavsdk.systems()[0];
 
 	/*
 	 * Instantiate buffer objects
@@ -134,25 +71,6 @@ top (int argc, char **argv)
 	SID SINDy(&input_buffer);
 
 	/*
-	 * Instantiate an autopilot interface object
-	 *
-	 * This starts two threads for read and write over MAVlink. The read thread
-	 * listens for any MAVlink message and pushes it to the current_messages
-	 * attribute.  The write thread at the moment only streams a position target
-	 * in the local NED frame (mavlink_set_position_target_local_ned_t), which
-	 * is changed by using the method update_setpoint().  Sending these messages
-	 * are only half the requirement to get response from the autopilot, a signal
-	 * to enter "offboard_control" mode is sent by using the enable_offboard_control()
-	 * method.  Signal the exit of this mode with disable_offboard_control().  It's
-	 * important that one way or another this program signals offboard mode exit,
-	 * otherwise the vehicle will go into failsafe.
-	 * 
-	 * The input buffer pointer is passed into its constructor so it can write to the buffer
-	 *
-	 */
-	Autopilot_Interface autopilot_interface(port, &input_buffer);
-
-	/*
 	 * Setup interrupt signal handler
 	 *
 	 * Responds to early exits signaled with Ctrl-C.  The handler will command
@@ -160,8 +78,7 @@ top (int argc, char **argv)
 	 * The handler in this example needs references to the above objects.
 	 *
 	 */
-	port_quit         = port;
-	autopilot_interface_quit = &autopilot_interface;
+
 	SINDy_quit = &SINDy;
 	signal(SIGINT,quit_handler);
 
@@ -169,32 +86,19 @@ top (int argc, char **argv)
 	 * Start the port, autopilot_interface, and logger
 	 * This is where the port is opened, and read and write threads are started.
 	 */
-	port->start();
-	autopilot_interface.start();
 	SINDy.start();
 
 
 	// --------------------------------------------------------------------------
 	//   RUN COMMANDS
 	// --------------------------------------------------------------------------
-
-	/*
-	 * Now we can implement the algorithm we want on top of the autopilot interface
-	 */
-	commands(autopilot_interface, SINDy, autotakeoff, logfile_directory);
+	commands(system, SINDy, autotakeoff, logfile_directory);
 
 
 	// --------------------------------------------------------------------------
 	//   THREAD and PORT SHUTDOWN
 	// --------------------------------------------------------------------------
 
-	/*
-	 * Now that we are done we can stop the threads and close the port
-	 */
-	autopilot_interface.stop();
-	port->stop();
-
-	delete port;
 
 	// --------------------------------------------------------------------------
 	//   DONE
@@ -211,11 +115,17 @@ top (int argc, char **argv)
 // ------------------------------------------------------------------------------
 
 void
-commands(Autopilot_Interface &api, SID &SINDy, bool autotakeoff, string logfile_directory)
+commands(std::shared_ptr<mavsdk::System> system, SID &SINDy, Buffer &input_buffer, string logfile_directory)
 {
+	using namespace mavsdk;
+
 	// Primary event variables
 	int flights_since_reboot = 0;
 
+	// instantiate telemetry object
+	Telemetry telemetry = Telemetry{system};
+
+	telemetry.subscribe_attitude_euler(input_buffer.insert(Telemetry::attitude_euler attitude));
 
 
 	// Prepare command for setting message interval

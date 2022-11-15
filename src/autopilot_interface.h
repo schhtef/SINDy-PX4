@@ -55,7 +55,6 @@
 //   Includes
 // ------------------------------------------------------------------------------
 
-#include "generic_port.h"
 #include "buffer.h"
 
 #include <signal.h>
@@ -66,7 +65,6 @@
 #include <mutex>
 #include <atomic>
 
-#include "c_library_v2/common/mavlink.h"
 
 // ------------------------------------------------------------------------------
 //   Defines

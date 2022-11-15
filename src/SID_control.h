@@ -14,14 +14,10 @@
 
 using namespace std;
 
+#include <mavsdk/mavsdk.h> // general mavlink header
+#include <mavsdk/plugins/telemetry/telemetry.h> // telemetry plugin
 #include "buffer.h"
-#include "autopilot_interface.h"
-#include "c_library_v2/common/mavlink.h"
-#include "udp_port.h"
-#include "serial_port.h"
 #include "system_identification.h"
-#include "plog/Log.h"
-#include "plog/Initializers/RollingFileInitializer.h"
 
 // Top state machine logic states
 enum system_states
@@ -36,13 +32,11 @@ int main(int argc, char **argv);
 int top(int argc, char **argv);
 
 //Runtime command handling
-void commands(Autopilot_Interface &autopilot_interface, SID &SINDy, bool autotakeoff, string logfile_directory);
+void commands(std::shared_ptr<mavsdk::System> system, SID &SINDy, Buffer &input_buffer, string logfile_directory);
 void parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate,
 		bool &use_udp, char *&udp_ip, int &udp_port, bool &autotakeoff, string &filename, int &buffer_length, string &buffer_mode);
 
 //Interrupt handling
-Autopilot_Interface *autopilot_interface_quit;
-Generic_Port *port_quit;
 SID *SINDy_quit;
 int system_state = GROUND_IDLE_STATE;
 void quit_handler( int sig );

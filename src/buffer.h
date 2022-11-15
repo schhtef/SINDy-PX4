@@ -15,7 +15,6 @@
 // ------------------------------------------------------------------------------
 //   Includes
 // ------------------------------------------------------------------------------
-#include "c_library_v2/common/mavlink.h"
 #include <utility>
 #include <mutex>
 #include <condition_variable>
@@ -122,7 +121,7 @@ public:
     Buffer(int buffer_length_, string buffer_mode);
     ~Buffer();
 
-    void insert(mavlink_message_t message);
+    void insert(auto message);
     Data_Buffer clear();
 };
 

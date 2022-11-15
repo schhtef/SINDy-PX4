@@ -16,12 +16,11 @@
 //   Includes
 // ------------------------------------------------------------------------------
 #include "autopilot_interface.h"
-#include "c_library_v2/common/mavlink.h"
 #include "buffer.h"
 #include <string>
 #include <math.h>
 #include <chrono>
-#include <mlpack/methods/linear_regression/linear_regression.hpp>
+#include <armadillo>
 
 // Vehicle states
 struct Vehicle_States{
