@@ -22,6 +22,8 @@
 #include <algorithm>    // std::copy
 #include <assert.h>
 #include <chrono>
+#include <mavsdk/mavsdk.h> // general mavlink header
+#include <mavsdk/plugins/telemetry/telemetry.h> // telemetry plugin
 
 using namespace std;
 
@@ -31,32 +33,40 @@ using namespace std;
 
 // Package the individual arrays into a struct
 struct Data_Buffer {
-    std::vector<uint32_t> time_boot_ms; /*< [ms] Common Timestamp (time since system boot) used after interpolation.*/
+    std::vector<uint64_t> time_boot_ms; /*< [ms] Common Timestamp (time since system boot) used after interpolation.*/
 
-    std::vector<uint32_t> attitude_time_boot_ms; /*< [ms] Timestamp (time since system boot).*/
+    // Body coordinates
+    std::vector<uint64_t> attitude_time_boot_ms;    
     std::vector<float> roll; /*< [rad] Roll angle (-pi..+pi)*/
     std::vector<float> pitch; /*< [rad] Pitch angle (-pi..+pi)*/
     std::vector<float> yaw; /*< [rad] Yaw angle (-pi..+pi)*/
+
+    // Body coordinates
+    std::vector<uint64_t> angular_velocity_time_boot_ms;
     std::vector<float> rollspeed; /*< [rad/s] Roll angular speed*/
     std::vector<float> pitchspeed; /*< [rad/s] Pitch angular speed*/
     std::vector<float> yawspeed; /*< [rad/s] Yaw angular speed*/
 
-    std::vector<uint32_t> local_time_boot_ms; /*< [ms] Timestamp (time since system boot).*/
+    // Body coordinates
+    std::vector<uint64_t> position_time_boot_ms;
     std::vector<float> x; /*< [m] X Position*/
     std::vector<float> y; /*< [m] Y Position*/
     std::vector<float> z; /*< [m] Z Position*/
+
+    // Body coordinates
+    std::vector<uint64_t> velocity_time_boot_ms;
     std::vector<float> lvx; /*< [m/s] X Speed*/
     std::vector<float> lvy; /*< [m/s] Y Speed*/
     std::vector<float> lvz; /*< [m/s] Z Speed*/
 
-    std::vector<uint32_t> wind_time_boot_ms; /*< [us] Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude of the number.*/
-    std::vector<float> wind_x; /*< [m/s] Wind in X (NED) direction*/
-    std::vector<float> wind_y; /*< [m/s] Wind in Y (NED) direction*/
-    std::vector<float> wind_z; /*< [m/s] Wind in Z (NED) direction*/
-
     void clear_buffers()
     {
-        attitude_time_boot_ms.clear(); /*< [ms] Timestamp (time since system boot).*/
+        time_boot_ms.clear();
+        attitude_time_boot_ms.clear();
+        angular_velocity_time_boot_ms.clear();
+        position_time_boot_ms.clear();
+        velocity_time_boot_ms.clear();
+
         roll.clear(); /*< [rad] Roll angle (-pi..+pi)*/
         pitch.clear(); /*< [rad] Pitch angle (-pi..+pi)*/
         yaw.clear(); /*< [rad] Yaw angle (-pi..+pi)*/
@@ -64,18 +74,12 @@ struct Data_Buffer {
         pitchspeed.clear(); /*< [rad/s] Pitch angular speed*/
         yawspeed.clear(); /*< [rad/s] Yaw angular speed*/
 
-        local_time_boot_ms.clear(); /*< [ms] Timestamp (time since system boot).*/
         x.clear(); /*< [m] X Position*/
         y.clear(); /*< [m] Y Position*/
         z.clear(); /*< [m] Z Position*/
         lvx.clear(); /*< [m/s] X Speed*/
         lvy.clear(); /*< [m/s] Y Speed*/
         lvz.clear(); /*< [m/s] Z Speed*/
-
-        wind_time_boot_ms.clear();
-        wind_x.clear();
-        wind_y.clear();
-        wind_z.clear();
     }
 
     int find_max_length()
@@ -85,13 +89,17 @@ struct Data_Buffer {
         {
             max_length = attitude_time_boot_ms.size();
         }
-        if(local_time_boot_ms.size() > max_length)
+        if(angular_velocity_time_boot_ms.size() > max_length)
         {
-            max_length = local_time_boot_ms.size();
+            max_length = angular_velocity_time_boot_ms.size();
         }
-        if(wind_time_boot_ms.size() > max_length)
+        if(position_time_boot_ms.size() > max_length)
         {
-            max_length = wind_time_boot_ms.size();
+            max_length = position_time_boot_ms.size();
+        }
+        if(velocity_time_boot_ms.size() > max_length)
+        {
+            max_length = velocity_time_boot_ms.size();
         }
         return max_length;
     }
@@ -121,10 +129,12 @@ public:
     Buffer(int buffer_length_, string buffer_mode);
     ~Buffer();
 
-    void insert(auto message);
+    void Buffer::insert(mavsdk::Telemetry::PositionBody, uint64_t timestamp);
+    void Buffer::insert(mavsdk::Telemetry::EulerAngle, uint64_t timestamp);
+    void Buffer::insert(mavsdk::Telemetry::AngularVelocityBody, uint64_t timestamp);
+    void Buffer::insert(mavsdk::Telemetry::VelocityBody, uint64_t timestamp);
+    
     Data_Buffer clear();
 };
-
-
 
 #endif  //Buffer_H_

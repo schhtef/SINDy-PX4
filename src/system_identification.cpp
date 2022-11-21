@@ -124,56 +124,69 @@ interpolate(Data_Buffer data, int sample_rate)
 	arma::rowvec psi = arma::conv_to<arma::rowvec>::from(data.roll);
 	arma::rowvec theta = arma::conv_to<arma::rowvec>::from(data.pitch);
 	arma::rowvec phi = arma::conv_to<arma::rowvec>::from(data.yaw);
+	arma::rowvec attitude_time_ms = arma::conv_to<arma::rowvec>::from(data.attitude_time_boot_ms);
 
 	//Angular Velocities
 	arma::rowvec p = arma::conv_to<arma::rowvec>::from(data.rollspeed);
 	arma::rowvec q = arma::conv_to<arma::rowvec>::from(data.pitchspeed);
 	arma::rowvec r = arma::conv_to<arma::rowvec>::from(data.yawspeed);
-
-	arma::rowvec attitude_time_ms = arma::conv_to<arma::rowvec>::from(data.attitude_time_boot_ms);
+	arma::rowvec angular_velocity_time_boot_ms = arma::conv_to<arma::rowvec>::from(data.angular_velocity_time_boot_ms);
 
 	//Linear Velocities
 	arma::rowvec lvx = arma::conv_to<arma::rowvec>::from(data.lvx);
 	arma::rowvec lvy = arma::conv_to<arma::rowvec>::from(data.lvy);
 	arma::rowvec lvz = arma::conv_to<arma::rowvec>::from(data.lvz);
+	arma::rowvec velocity_time_boot_ms = arma::conv_to<arma::rowvec>::from(data.velocity_time_boot_ms);
+
+	//Linear Positions
 	arma::rowvec x = arma::conv_to<arma::rowvec>::from(data.x);
 	arma::rowvec y = arma::conv_to<arma::rowvec>::from(data.y);
 	arma::rowvec z = arma::conv_to<arma::rowvec>::from(data.z);
-
-	arma::rowvec local_position_time_ms = arma::conv_to<arma::rowvec>::from(data.local_time_boot_ms);
+	arma::rowvec position_time_boot_ms = arma::conv_to<arma::rowvec>::from(data.position_time_boot_ms);
 
 	//Interpolate using arma 1D interpolate
 	//Generate common time series
 
 	// Find latest first sample sample time, this will be the time origin
 	// Using latest so no extrapolation occurs
- 	uint32_t first_sample_time = data.attitude_time_boot_ms.front();
+ 	uint64_t first_sample_time = data.attitude_time_boot_ms.front();
 
-	if(data.local_time_boot_ms.front() > first_sample_time)
+	if(data.angular_velocity_time_boot_ms.front() > first_sample_time)
 	{
-		first_sample_time = data.local_time_boot_ms.front();
+		first_sample_time = data.angular_velocity_time_boot_ms.front();
 	}
-    /*
-	if((data.wind_time_boot_ms.front()) < first_sample_time)
+
+	if((data.velocity_time_boot_ms.front()) > first_sample_time)
 	{
-		first_sample_time = data.wind_time_boot_ms.front();
+		first_sample_time = data.velocity_time_boot_ms.front();
 	}
-    */
+
+	if((data.position_time_boot_ms.front()) > first_sample_time)
+	{
+		first_sample_time = data.position_time_boot_ms.front();
+	}
 
     // Find the buffer with the earliest last sample to avoid extrapolation
- 	uint32_t last_sample_time = data.attitude_time_boot_ms.back();
+ 	uint64_t last_sample_time = data.attitude_time_boot_ms.back();
 
-	if(data.local_time_boot_ms.back() < last_sample_time)
+	if(data.angular_velocity_time_boot_ms.back() < last_sample_time)
 	{
-		last_sample_time = data.local_time_boot_ms.back();
+		last_sample_time = data.angular_velocity_time_boot_ms.back();
 	}
-    /*
-	if((data.wind_time_boot_ms.back()) > last_sample_time)
+
+	if((data.velocity_time_boot_ms.back()) < last_sample_time)
 	{
-		last_sample_time = data.wind_time_boot_ms.back();
+		last_sample_time = data.velocity_time_boot_ms.back();
 	}
-    */
+
+	if((data.position_time_boot_ms.back()) < last_sample_time)
+	{
+		last_sample_time = data.position_time_boot_ms.back();
+	}
+
 	int number_of_samples = (last_sample_time-first_sample_time)*(sample_rate)/1000;
+	
+	// Generate a common time base
 	arma::rowvec time_ms = arma::linspace<arma::rowvec>(first_sample_time, last_sample_time, number_of_samples);
 
 	arma::rowvec psi_interp(number_of_samples);
@@ -192,53 +205,17 @@ interpolate(Data_Buffer data, int sample_rate)
 	arma::interp1(attitude_time_ms, psi, time_ms, psi_interp);
 	arma::interp1(attitude_time_ms, theta, time_ms, theta_interp);
 	arma::interp1(attitude_time_ms, phi, time_ms, phi_interp);
-	arma::interp1(attitude_time_ms, p, time_ms, p_interp);
-	arma::interp1(attitude_time_ms, q, time_ms, q_interp);
-	arma::interp1(attitude_time_ms, r, time_ms, r_interp);
-	arma::interp1(local_position_time_ms, lvx, time_ms, lvx_interp);
-	arma::interp1(local_position_time_ms, lvy, time_ms, lvy_interp);
-	arma::interp1(local_position_time_ms, lvz, time_ms, lvz_interp);
-	arma::interp1(local_position_time_ms, x, time_ms, x_interp);
-	arma::interp1(local_position_time_ms, y, time_ms, y_interp);
-	arma::interp1(local_position_time_ms, z, time_ms, z_interp);
+	arma::interp1(angular_velocity_time_boot_ms, p, time_ms, p_interp);
+	arma::interp1(angular_velocity_time_boot_ms, q, time_ms, q_interp);
+	arma::interp1(angular_velocity_time_boot_ms, r, time_ms, r_interp);
+	arma::interp1(velocity_time_boot_ms, lvx, time_ms, lvx_interp);
+	arma::interp1(velocity_time_boot_ms, lvy, time_ms, lvy_interp);
+	arma::interp1(velocity_time_boot_ms, lvz, time_ms, lvz_interp);
+	arma::interp1(position_time_boot_ms, x, time_ms, x_interp);
+	arma::interp1(position_time_boot_ms, y, time_ms, y_interp);
+	arma::interp1(position_time_boot_ms, z, time_ms, z_interp);
 	
 	Vehicle_States state_buffer;
-
-	//Linear Body Velocity Computations
-	arma::fmat rotation_matrix(3,3);
-	arma::rowvec body_speeds(3);
-	arma::rowvec linear_speeds(3);
-
-	//Linear body speeds
-	arma::rowvec u(number_of_samples);
-	arma::rowvec v(number_of_samples);
-	arma::rowvec w(number_of_samples);
-
-	float theta_i;
-	float psi_i;
-	float phi_i;
-
-	for(int i = 0; i< number_of_samples; i++)
-	{
-		psi_i = psi_interp(i);
-		theta_i = theta_interp(i);
-		phi_i = phi_interp(i);
-
-		//Fill rotation matrix http://eecs.qmul.ac.uk/~gslabaugh/publications/euler.pdf
-		rotation_matrix = {{cos(theta_i)*cos(phi_i), sin(psi_i)*sin(theta_i)*cos(phi_i) - cos(psi_i)*sin(phi_i), cos(psi_i)*sin(theta_i)*cos(phi_i) + sin(psi_i)*sin(phi_i)},
-							{cos(theta_i)*sin(phi_i), sin(psi_i)*sin(theta_i)*sin(phi_i)+cos(psi_i)*cos(phi_i), cos(psi_i)*sin(theta_i)*sin(phi_i)-sin(psi_i)*cos(theta_i)},
-							{-sin(theta_i), sin(phi_i)*cos(theta_i), cos(psi_i)*cos(theta_i)}};
-		//Fill row vector with linear intertial frame velocities (xyz)
-		//Intertial frame velocities are computed by local velocity (NED) - wind velocity (NED)
-		//linear_speeds = {data.lvx[i]-data.wind_x[i], data.lvy[i]-data.wind_y[i], data.lvz[i]-data.wind_z[i]};
-		linear_speeds = {lvx_interp(i), lvy_interp(i), lvz_interp(i)};
-		//Rotate to bring intertial frame into body frame
-		body_speeds = linear_speeds*rotation_matrix;
-		//Insert results into the state buffer
-		u(i) = body_speeds(0);
-		v(i) = body_speeds(1);
-		w(i) = body_speeds(2);
-	}
 
 	state_buffer.p = p_interp;
 	state_buffer.q = q_interp;
@@ -246,9 +223,9 @@ interpolate(Data_Buffer data, int sample_rate)
 	state_buffer.psi = psi_interp;
 	state_buffer.theta = theta_interp;
 	state_buffer.phi = phi_interp;
-	state_buffer.u = u;
-	state_buffer.v = v;
-	state_buffer.w = w;
+	state_buffer.u = lvx_interp;
+	state_buffer.v = lvy_interp;
+	state_buffer.w = lvz_interp;
 	state_buffer.x = x_interp;
 	state_buffer.y = y_interp;
 	state_buffer.z = z_interp;

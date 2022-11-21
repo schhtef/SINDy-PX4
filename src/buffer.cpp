@@ -43,8 +43,8 @@ Buffer::
 
 }
 
-// Insert a generic mavlink message into the buffer. Parse the desired data points into the data buffer.
-void Buffer::insert(auto message)
+// Insert a linear velocity message into the buffer
+void Buffer::insert(mavsdk::Telemetry::VelocityBody message, uint64_t timestamp)
 {
 	// thread safe insertion into the buffer, ensures that no insertion occurs when buffer is full
 	// will cause the calling thread to wait if it is full
@@ -53,97 +53,16 @@ void Buffer::insert(auto message)
 
 	// use lambda function to determine if the buffer is currently full
 	// the calling thread waits on the not_full condition variable until the consumer notifies it is empty
+	// in summary, if the buffer is full, wait to insert until it has been emptied
 	not_full.wait(unique_lock, [this]()
 	{
 		return buffer_counter < buffer_length; 
 	});
 
-	// Switch on message type to put into the appropriate vector
-	switch(message.msgid)
-	{
-		case MAVLINK_MSG_ID_LOCAL_POSITION_NED:
-		{
-			mavlink_local_position_ned_t element;
-			mavlink_msg_local_position_ned_decode(&message, &element);
-			//Insert struct elements into local position buffer
-			buffer.local_time_boot_ms.push_back(element.time_boot_ms);
-			buffer.lvx.push_back(element.vx);
-			buffer.lvy.push_back(element.vy);
-			buffer.lvz.push_back(element.vz);
-			buffer.x.push_back(element.x);
-			buffer.y.push_back(element.y);
-			buffer.z.push_back(element.z);
-			break;
-		}
-/*
-		case MAVLINK_MSG_ID_GLOBAL_POSITION_INT:
-		{
-			mavlink_global_position_int_t element;
-			mavlink_msg_global_position_int_decode(&message, &element);
-			//Insert struct elements into global position buffer
-			buffer.global_time_boot_ms.push_back(element.time_boot_ms);
-			buffer.alt.push_back(element.alt);
-			buffer.hdg.push_back(element.hdg);
-			buffer.lat.push_back(element.lat);
-			buffer.lon.push_back(element.lon);
-			buffer.relative_alt.push_back(element.relative_alt);
-			buffer.gvx.push_back(element.vx);
-			buffer.gvy.push_back(element.vy);
-			buffer.gvz.push_back(element.vz);
-			break;
-		}
-*/
-
-/*
-		case MAVLINK_MSG_ID_HIGHRES_IMU:
-		{
-			mavlink_highres_imu_t element;
-			mavlink_msg_highres_imu_decode(&message, &element);
-			input_buffer.buffered_highres_imu.push_back(element);
-			break;
-		}
-*/
-		case MAVLINK_MSG_ID_ATTITUDE:
-		{
-			mavlink_attitude_t element;
-			mavlink_msg_attitude_decode(&message, &element);
-			//Insert struct elements into attitude buffer
-			buffer.pitch.push_back(element.pitch);
-			buffer.pitchspeed.push_back(element.pitchspeed);
-			buffer.roll.push_back(element.roll);
-			buffer.rollspeed.push_back(element.rollspeed);
-			buffer.attitude_time_boot_ms.push_back(element.time_boot_ms);
-			buffer.yaw.push_back(element.yaw);
-			buffer.yawspeed.push_back(element.yawspeed);
-			break;
-		}
-/*
-		case MAVLINK_MSG_ID_ACTUATOR_OUTPUT_STATUS:
-		{
-			mavlink_actuator_output_status_t element;
-			mavlink_msg_actuator_output_status_decode(&message, &element);
-			input_buffer.buffered_actuator_status.push_back(element);
-			break;
-		}
-*/
-		case MAVLINK_MSG_ID_WIND_COV:
-		{
-			mavlink_wind_cov_t element;
-			mavlink_msg_wind_cov_decode(&message, &element);
-			//Insert struct elements into attitude buffer
-			buffer.wind_time_boot_ms.push_back(element.time_usec/1000); //us to ms
-			buffer.wind_x.push_back(element.wind_x);
-			buffer.wind_y.push_back(element.wind_y);
-			buffer.wind_z.push_back(element.wind_z);
-			break;
-		}
-
-		default:
-		{
-			//fprintf(stderr, "Warning, did not insert message id %i into buffer\n", message.msgid);
-			break;
-		}
-	}
+	buffer.velocity_time_boot_ms.push_back(timestamp);
+	buffer.lvx.push_back(message.x_m_s);
+	buffer.lvy.push_back(message.y_m_s);
+	buffer.lvz.push_back(message.z_m_s);
 
 	if(buffer_mode == "length")
 	{
@@ -158,6 +77,134 @@ void Buffer::insert(auto message)
 		buffer_counter = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count() - clear_time; 
 	}
 
+	if(buffer_counter >= buffer_length)
+	{
+		// Notify blocked thread that buffer is full
+		full.notify_one();
+	}
+	//unlock mutex
+	unique_lock.unlock();
+}
+
+// Insert an angular velocity message into the buffer
+void Buffer::insert(mavsdk::Telemetry::AngularVelocityBody message, uint64_t timestamp)
+{
+	// thread safe insertion into the buffer, ensures that no insertion occurs when buffer is full
+	// will cause the calling thread to wait if it is full
+
+	std::unique_lock<std::mutex> unique_lock(mtx);
+
+	// use lambda function to determine if the buffer is currently full
+	// the calling thread waits on the not_full condition variable until the consumer notifies it is empty
+	// in summary, if the buffer is full, wait to insert until it has been emptied
+	not_full.wait(unique_lock, [this]()
+	{
+		return buffer_counter < buffer_length; 
+	});
+
+	buffer.angular_velocity_time_boot_ms.push_back(timestamp);
+	buffer.pitchspeed.push_back(message.pitch_rad_s);
+	buffer.rollspeed.push_back(message.roll_rad_s);
+	buffer.yawspeed.push_back(message.yaw_rad_s);
+
+	if(buffer_mode == "length")
+	{
+		// If one of the input buffers has reached the maximum length, notify that the buffer is full
+		buffer_counter = buffer.find_max_length();
+	}
+	else if(buffer_mode == "time")
+	{
+		//Find current time in s
+		auto now = std::chrono::high_resolution_clock::now();
+		//Buffer counter is the time since
+		buffer_counter = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count() - clear_time; 
+	}
+
+	if(buffer_counter >= buffer_length)
+	{
+		// Notify blocked thread that buffer is full
+		full.notify_one();
+	}
+	//unlock mutex
+	unique_lock.unlock();
+}
+
+// Insert an angular attitude message into the buffer
+void Buffer::insert(mavsdk::Telemetry::EulerAngle message, uint64_t timestamp)
+{
+	// thread safe insertion into the buffer, ensures that no insertion occurs when buffer is full
+	// will cause the calling thread to wait if it is full
+
+	std::unique_lock<std::mutex> unique_lock(mtx);
+
+	// use lambda function to determine if the buffer is currently full
+	// the calling thread waits on the not_full condition variable until the consumer notifies it is empty
+	// in summary, if the buffer is full, wait to insert until it has been emptied
+	not_full.wait(unique_lock, [this]()
+	{
+		return buffer_counter < buffer_length; 
+	});
+
+	buffer.attitude_time_boot_ms.push_back(timestamp);
+	buffer.roll.push_back(message.roll_deg);
+	buffer.pitch.push_back(message.pitch_deg);
+	buffer.yaw.push_back(message.yaw_deg);
+
+	if(buffer_mode == "length")
+	{
+		// If one of the input buffers has reached the maximum length, notify that the buffer is full
+		buffer_counter = buffer.find_max_length();
+	}
+	else if(buffer_mode == "time")
+	{
+		//Find current time in s
+		auto now = std::chrono::high_resolution_clock::now();
+		//Buffer counter is the time since
+		buffer_counter = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count() - clear_time; 
+	}
+
+	if(buffer_counter >= buffer_length)
+	{
+		// Notify blocked thread that buffer is full
+		full.notify_one();
+	}
+	//unlock mutex
+	unique_lock.unlock();
+}
+
+// Insert a linear position message into the buffer
+void Buffer::insert(mavsdk::Telemetry::PositionBody message, uint64_t timestamp)
+{
+	// thread safe insertion into the buffer, ensures that no insertion occurs when buffer is full
+	// will cause the calling thread to wait if it is full
+
+	std::unique_lock<std::mutex> unique_lock(mtx);
+
+	// use lambda function to determine if the buffer is currently full
+	// the calling thread waits on the not_full condition variable until the consumer notifies it is empty
+	// in summary, if the buffer is full, wait to insert until it has been emptied
+	not_full.wait(unique_lock, [this]()
+	{
+		return buffer_counter < buffer_length; 
+	});
+
+	buffer.attitude_time_boot_ms.push_back(timestamp);
+	buffer.x.push_back(message.x_m);
+	buffer.y.push_back(message.y_m);
+	buffer.z.push_back(message.z_m);
+
+	if(buffer_mode == "length")
+	{
+		// If one of the input buffers has reached the maximum length, notify that the buffer is full
+		buffer_counter = buffer.find_max_length();
+	}
+	else if(buffer_mode == "time")
+	{
+		//Find current time in s
+		auto now = std::chrono::high_resolution_clock::now();
+		//Buffer counter is the time since
+		buffer_counter = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count() - clear_time; 
+	}
 
 	if(buffer_counter >= buffer_length)
 	{
