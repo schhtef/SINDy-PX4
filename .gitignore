@@ -31,9 +31,5 @@
 *.out
 *.app
 
-# Executables
-build/
-
 # Log files
 *.csv
-/log/*

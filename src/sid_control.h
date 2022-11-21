@@ -29,13 +29,11 @@ enum system_states
 };
 
 int main(int argc, char **argv);
-int top(int argc, char **argv);
-
+//Device connection and configuration
+int setup(int argc, char **argv);
 //Runtime command handling
-void commands(std::shared_ptr<mavsdk::System> system, SID &SINDy, Buffer &input_buffer, string logfile_directory);
-void parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate,
-		bool &use_udp, char *&udp_ip, int &udp_port, bool &autotakeoff, string &filename, int &buffer_length, string &buffer_mode);
-
+void flight_loop(std::shared_ptr<mavsdk::System> system, SID &SINDy, Buffer &input_buffer, string logfile_directory);
+void parse_commandline(int argc, char **argv, string &autopilot_path, string &logfile_directory, int &buffer_length, string &buffer_mode);
 //Interrupt handling
 SID *SINDy_quit;
 int system_state = GROUND_IDLE_STATE;

@@ -15,7 +15,6 @@
 // ------------------------------------------------------------------------------
 //   Includes
 // ------------------------------------------------------------------------------
-#include "autopilot_interface.h"
 #include "buffer.h"
 #include <string>
 #include <math.h>
@@ -67,15 +66,6 @@ private:
     Buffer *input_buffer;
     bool time_to_exit = false;
     pthread_t compute_tid = 0;
-public:
-    SID();
-    SID(Buffer *input_buffer_);
-    ~SID();
-
-    void compute_thread();
-    void start();
-    void stop();
-    void handle_quit(int sig);
 
     arma::uvec threshold_vector(arma::vec vector, float threshold, string mode);
     Vehicle_States interpolate(Data_Buffer data, int sample_rate);
@@ -84,12 +74,23 @@ public:
     arma::rowvec threshold(arma::vec coefficients, arma::mat candidate_functions, float threshold);
     arma::mat get_derivatives(Vehicle_States states);
     void log_coeff(arma::mat matrix, string filename);
+    arma::vec SID::ridge_regression(arma::mat candidate_functions, arma::rowvec state, float lambda);
+
+public:
+    SID();
+    SID(Buffer *input_buffer_);
+    ~SID();
+
+    void start();
+    void stop();
+    void handle_quit(int sig);
+    void compute_thread();
 
     bool compute_status;
-    bool disarmed;
+    std::atomic<bool> armed;
 
-    string filename;
-    uint32_t resampling_rate;
+    string logfile_directory = "../logs";
+    int flight_number = 0; //current flight number used for generating a filename
     float STLSQ_threshold; //STLSQ thresholding parameter
     float lambda; //Ridge regression parameter
 };

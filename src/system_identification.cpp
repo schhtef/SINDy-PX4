@@ -64,8 +64,6 @@ compute_thread()
 		auto derivative_time = std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4);
 		auto SINDy_time = std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5);
 
-		log_coeff(coefficients, "coefficients.csv");
-
 		stats(SINDy_time.count());
 		//std::cout << "Buffer Clear: " << clear_buffer_time.count() << "ms\n";
 		//std::cout << "Interpolation: " << interpolation_time.count() << "us\n";
@@ -82,9 +80,10 @@ compute_thread()
 		
 		// might cause a race condition where the SINDy thread checks disarmed just before the main thread
 		// sets the disarmed flag. Worst case scenario the SINDy thread logs one more buffer
-		if(!disarmed)
+		if(armed)
 		{
 			//log_buffer_to_csv(interpolated_telemetry, filename);
+			log_coeff(coefficients, logfile_directory + "Flight Number: " + to_string(flight_number) + ".csv");
 		}
 	}
 	compute_status = false;
@@ -300,7 +299,6 @@ SID::STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, flo
     //Normalize candidates with respect to stdev
     //candidate_functions = candidate_functions/candidate_functions.max();
 
-	using namespace mlpack::regression;
 	//To store result of STLSQ
 	arma::mat coefficients(candidate_functions.n_rows, states.n_rows);
 	
@@ -323,7 +321,7 @@ SID::STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, flo
 		arma::vec loop_coefficients = ridge_regression(candidate_functions, state, lambda); //Initial regression on the candidate functions
 		coefficientSize = loop_coefficients.size();
 		//Do subsequent regressions until converged
-		while(!Converged && iteration < max_iterations)
+		while(!converged && iteration < max_iterations)
 		{
 			arma::uvec below_index = threshold_vector(loop_coefficients, threshold, "below"); //Find indexes of coefficients which are lower than the threshold value
 			coefficient_indexes.shed_rows(below_index); //Remove indexes which correspond to thresholded values

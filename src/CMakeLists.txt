@@ -19,7 +19,7 @@ include_directories(${ARMADILLO_INCLUDE_DIRS})
 
 target_link_libraries(SINDy_offboard
     MAVSDK::mavsdk
-    MAVSDK::mavsdk_telemetry
+    #MAVSDK::mavsdk_telemetry
     ${ARMADILLO_INCLUDE_DIRS}
 )
 

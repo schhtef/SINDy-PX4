@@ -2,32 +2,26 @@
 //   Includes
 // ------------------------------------------------------------------------------
 
-#include "SID_control.h"
+#include "sid_control.h"
 
 
 // ------------------------------------------------------------------------------
 //   TOP
 // ------------------------------------------------------------------------------
 int
-top (int argc, char **argv)
+setup (int argc, char **argv)
 {
 
 	// --------------------------------------------------------------------------
 	//   PARSE THE COMMANDS
 	// --------------------------------------------------------------------------
-	char *uart_name = (char*)"/dev/ttyUSB0";
-	int baudrate = 57600;
-	bool use_udp = false;
-	char *udp_ip = (char*)"127.0.0.1";
-	int udp_port = 14540;
-	bool autotakeoff = false;
+	string autopilot_path = "";
 	string logfile_directory = "/home/stefan/Documents/PX4-SID/tests/";
 	string buffer_mode = "length";
 	int buffer_length = 100;
 
 	// do the parse, will throw an int if it fails
-	parse_commandline(argc, argv, uart_name, baudrate, use_udp, udp_ip, udp_port, 
-						autotakeoff, logfile_directory, buffer_length, buffer_mode);
+	parse_commandline(argc, argv, autopilot_path, logfile_directory, buffer_length, buffer_mode);
 	
 	// --------------------------------------------------------------------------
 	//   Instantiate MAVSDK Object
@@ -88,21 +82,17 @@ top (int argc, char **argv)
 	 */
 	SINDy.start();
 
+	// instantiate telemetry object
+	Telemetry telemetry = Telemetry{system};
+
+    telemetry.subscribe_position([](Telemetry::Position position) {
+        std::cout << "Altitude: " << position.relative_altitude_m << " m\n";
+    });
 
 	// --------------------------------------------------------------------------
 	//   RUN COMMANDS
 	// --------------------------------------------------------------------------
-	commands(system, SINDy, autotakeoff, logfile_directory);
-
-
-	// --------------------------------------------------------------------------
-	//   THREAD and PORT SHUTDOWN
-	// --------------------------------------------------------------------------
-
-
-	// --------------------------------------------------------------------------
-	//   DONE
-	// --------------------------------------------------------------------------
+	flight_loop(system, telemetry, SINDy, input_buffer, logfile_directory);
 
 	// woot!
 	return 0;
@@ -115,22 +105,17 @@ top (int argc, char **argv)
 // ------------------------------------------------------------------------------
 
 void
-commands(std::shared_ptr<mavsdk::System> system, SID &SINDy, Buffer &input_buffer, string logfile_directory)
+flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry telemetry, SID &SINDy, Buffer &input_buffer, string logfile_directory)
 {
 	using namespace mavsdk;
 
 	// Primary event variables
 	int flights_since_reboot = 0;
 
-	// instantiate telemetry object
-	Telemetry telemetry = Telemetry{system};
-
-	telemetry.subscribe_attitude_euler(input_buffer.insert(Telemetry::attitude_euler attitude));
-
-
 	// Prepare command for setting message interval
 	// TODO put command generation into helper function
 	
+	/*
 	//Request actuator output status messages
 	mavlink_command_int_t com = { 0 };
 	com.target_system    = api.system_id; //Companion system id
@@ -169,35 +154,32 @@ commands(std::shared_ptr<mavsdk::System> system, SID &SINDy, Buffer &input_buffe
 	}
 	// copy current messages
 	Mavlink_Messages messages = api.current_messages;
-	
+	*/
 	
 	
 	// Primary event loop
 	while(1)
 	{
-		int isarmed = api.current_messages.heartbeat.base_mode & MAV_MODE_FLAG_SAFETY_ARMED;
 		switch(system_state)
 		{
 			case GROUND_IDLE_STATE:
 				// If autopilot mode is armed, switch to FLIGHT_LOG_STATE
-				if(api.autopilot_armed)
+				if(telemetry.armed())
 				{
 					system_state = FLIGHT_LOG_STATE;
-					flights_since_reboot++;
-					SINDy.filename = logfile_directory + "Flight Number: " + to_string(flights_since_reboot) + ".csv";
-					printf("Autopilot armed. Starting system identification for flight number %d\n", flights_since_reboot);
-					SINDy.disarmed = false;
+					SINDy.flight_number++;
+					printf("Autopilot armed. Starting system identification for flight number %d\n", SINDy.flight_number);
+					SINDy.armed = true;
 				}
 			break;
 
 			case FLIGHT_LOG_STATE:
 				// If autopilot is disarmed, switch to GROUND_IDLE_STATE
-				if(!(api.autopilot_armed))
+				if(!telemetry.armed())
 				{
 					system_state = GROUND_IDLE_STATE;
-					printf("Autopilot disarmed. Stopping system identification\n");
-					// Stop the system identification thread
-					SINDy.disarmed = true;
+					printf("Autopilot disarmed. Stopped logging\n");
+					SINDy.armed = false;
 				}
 			break;
 
@@ -225,10 +207,7 @@ commands(std::shared_ptr<mavsdk::System> system, SID &SINDy, Buffer &input_buffe
 // ------------------------------------------------------------------------------
 //   Parse Command Line
 // ------------------------------------------------------------------------------
-// throws EXIT_FAILURE if could not open the port
-void
-parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate,
-		bool &use_udp, char *&udp_ip, int &udp_port, bool &autotakeoff, string &filename, int &buffer_length, string &buffer_mode)
+void parse_commandline(int argc, char **argv, string &autopilot_path, string &logfile_directory, int &buffer_length, string &buffer_mode)
 {
 
 	// string for command line usage
@@ -242,56 +221,6 @@ parse_commandline(int argc, char **argv, char *&uart_name, int &baudrate,
 		if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
 			printf("%s\n",commandline_usage);
 			throw EXIT_FAILURE;
-		}
-
-		// UART device ID
-		if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--device") == 0) {
-			if (argc > i + 1) {
-				i++;
-				uart_name = argv[i];
-			} else {
-				printf("%s\n",commandline_usage);
-				throw EXIT_FAILURE;
-			}
-		}
-
-		// Baud rate
-		if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--baud") == 0) {
-			if (argc > i + 1) {
-				i++;
-				baudrate = atoi(argv[i]);
-			} else {
-				printf("%s\n",commandline_usage);
-				throw EXIT_FAILURE;
-			}
-		}
-
-		// UDP ip
-		if (strcmp(argv[i], "-u") == 0 || strcmp(argv[i], "--udp_ip") == 0) {
-			if (argc > i + 1) {
-				i++;
-				udp_ip = argv[i];
-				use_udp = true;
-			} else {
-				printf("%s\n",commandline_usage);
-				throw EXIT_FAILURE;
-			}
-		}
-		
-		// UDP port
-		if (strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--port") == 0) {
-			if (argc > i + 1) {
-				i++;
-				udp_port = atoi(argv[i]);
-			} else {
-				printf("%s\n",commandline_usage);
-				throw EXIT_FAILURE;
-			}
-		}
-
-		// Autotakeoff
-		if (strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--autotakeoff") == 0) {
-			autotakeoff = true;
 		}
 
 		// logfile
@@ -346,18 +275,6 @@ quit_handler( int sig )
 	printf("TERMINATING AT USER REQUEST\n");
 	printf("\n");
 
-	// autopilot interface
-	try {
-		autopilot_interface_quit->handle_quit(sig);
-	}
-	catch (int error){}
-
-	// port
-	try {
-		port_quit->stop();
-	}
-	catch (int error){}
-
 	// SID
 	try {
 		SINDy_quit->stop();
@@ -378,13 +295,13 @@ main(int argc, char **argv)
 	// This program uses throw, wrap one big try/catch here
 	try
 	{
-		int result = top(argc,argv);
+		int result = setup(argc,argv);
 		return result;
 	}
 
 	catch ( int error )
 	{
-		fprintf(stderr,"mavlink_control threw exception %i \n" , error);
+		fprintf(stderr,"exception thrown: %i \n" , error);
 		return error;
 	}
 
