@@ -114,10 +114,10 @@ log_coeff(arma::mat matrix, string filename)
 	myfile.close();
 }
 
+// Interpolates the data buffer and performs state transformations
 Vehicle_States SID::
 interpolate(Data_Buffer data, int sample_rate)
 {
-	using namespace arma;
 	//Perform the coordinate conversions to obtain the desired states
 
 	//Euler angles
@@ -174,7 +174,7 @@ interpolate(Data_Buffer data, int sample_rate)
 	}
     */
 	int number_of_samples = (last_sample_time-first_sample_time)*(sample_rate)/1000;
-	arma::rowvec time_ms = linspace<arma::rowvec>(first_sample_time, last_sample_time, number_of_samples);
+	arma::rowvec time_ms = arma::linspace<arma::rowvec>(first_sample_time, last_sample_time, number_of_samples);
 
 	arma::rowvec psi_interp(number_of_samples);
 	arma::rowvec theta_interp(number_of_samples);
@@ -257,6 +257,7 @@ interpolate(Data_Buffer data, int sample_rate)
 	return state_buffer;
 }
 
+// Returns indeces of vector which correspond to values which are above or below a threshold value
 arma::uvec SID::
 threshold_vector(arma::vec vector, float threshold, string mode)
 {
@@ -285,6 +286,7 @@ threshold_vector(arma::vec vector, float threshold, string mode)
     return thresholded_indexes;
 }
 
+// Sequentially thresholded least squares algorithm
 arma::mat 
 SID::STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float lambda)
 {
@@ -357,6 +359,7 @@ SID::STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, flo
 	return coefficients;
 }
 
+// Ridge regression. Essentially least squares when lambda = 0
 arma::vec SID::
 ridge_regression(arma::mat candidate_functions, arma::rowvec state, float lambda)
 {

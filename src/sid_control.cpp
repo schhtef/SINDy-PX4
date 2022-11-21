@@ -224,10 +224,21 @@ void parse_commandline(int argc, char **argv, string &autopilot_path, string &lo
 		}
 
 		// logfile
+		if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--devpath") == 0) {
+			if (argc > i + 1) {
+				i++;
+				autopilot_path = (argv[i]);
+			} else {
+				printf("%s\n",commandline_usage);
+				throw EXIT_FAILURE;
+			}
+		}
+
+		// logfile
 		if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--log") == 0) {
 			if (argc > i + 1) {
 				i++;
-				filename = (argv[i]);
+				logfile_directory = (argv[i]);
 			} else {
 				printf("%s\n",commandline_usage);
 				throw EXIT_FAILURE;
@@ -235,7 +246,7 @@ void parse_commandline(int argc, char **argv, string &autopilot_path, string &lo
 		}
 
 		// buffer length
-		if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--buffer") == 0) {
+		if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--buffer") == 0) {
 			if (argc > i + 1) {
 				i++;
 				buffer_length = atoi(argv[i]);
