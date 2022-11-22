@@ -173,7 +173,7 @@ void Buffer::insert(mavsdk::Telemetry::EulerAngle message, uint64_t timestamp)
 }
 
 // Insert a linear position message into the buffer
-void Buffer::insert(mavsdk::Telemetry::PositionBody message, uint64_t timestamp)
+void Buffer::insert(mavsdk::Telemetry::PositionVelocityNed message, uint64_t timestamp)
 {
 	// thread safe insertion into the buffer, ensures that no insertion occurs when buffer is full
 	// will cause the calling thread to wait if it is full
@@ -188,10 +188,14 @@ void Buffer::insert(mavsdk::Telemetry::PositionBody message, uint64_t timestamp)
 		return buffer_counter < buffer_length; 
 	});
 
-	buffer.attitude_time_boot_ms.push_back(timestamp);
-	buffer.x.push_back(message.x_m);
-	buffer.y.push_back(message.y_m);
-	buffer.z.push_back(message.z_m);
+	buffer.position_time_boot_ms.push_back(timestamp);
+	buffer.x.push_back(message.position.down_m);
+	buffer.y.push_back(message.position.east_m);
+	buffer.z.push_back(message.position.north_m);
+
+	buffer.lvx.push_back(message.position.down_m);
+	buffer.lvy.push_back(message.position.east_m);
+	buffer.lvz.push_back(message.position.north_m);
 
 	if(buffer_mode == "length")
 	{
@@ -202,7 +206,7 @@ void Buffer::insert(mavsdk::Telemetry::PositionBody message, uint64_t timestamp)
 	{
 		//Find current time in s
 		auto now = std::chrono::high_resolution_clock::now();
-		//Buffer counter is the time since
+		//Buffer counter is the time since clearing the buffer
 		buffer_counter = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count() - clear_time; 
 	}
 

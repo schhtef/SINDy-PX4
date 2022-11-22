@@ -92,8 +92,8 @@ setup (int argc, char **argv)
     });
 
 	telemetry.subscribe_position_velocity_ned([&input_buffer, program_epoch](Telemetry::PositionVelocityNed position) {
-        std::chrono::time_point now = std::chrono::high_resolution_clock::now();
-		auto sample_time = std::chrono::duration_cast<std::chrono::milliseconds>(now - program_epoch);
+        auto now = std::chrono::high_resolution_clock::now();
+		uint64_t sample_time = std::chrono::duration_cast<std::chrono::milliseconds>(now - program_epoch).count();
 		input_buffer.insert(position, sample_time);
     });
 

@@ -136,7 +136,6 @@ interpolate(Data_Buffer data, int sample_rate)
 	arma::rowvec lvx = arma::conv_to<arma::rowvec>::from(data.lvx);
 	arma::rowvec lvy = arma::conv_to<arma::rowvec>::from(data.lvy);
 	arma::rowvec lvz = arma::conv_to<arma::rowvec>::from(data.lvz);
-	arma::rowvec velocity_time_boot_ms = arma::conv_to<arma::rowvec>::from(data.velocity_time_boot_ms);
 
 	//Linear Positions
 	arma::rowvec x = arma::conv_to<arma::rowvec>::from(data.x);
@@ -156,11 +155,6 @@ interpolate(Data_Buffer data, int sample_rate)
 		first_sample_time = data.angular_velocity_time_boot_ms.front();
 	}
 
-	if((data.velocity_time_boot_ms.front()) > first_sample_time)
-	{
-		first_sample_time = data.velocity_time_boot_ms.front();
-	}
-
 	if((data.position_time_boot_ms.front()) > first_sample_time)
 	{
 		first_sample_time = data.position_time_boot_ms.front();
@@ -172,11 +166,6 @@ interpolate(Data_Buffer data, int sample_rate)
 	if(data.angular_velocity_time_boot_ms.back() < last_sample_time)
 	{
 		last_sample_time = data.angular_velocity_time_boot_ms.back();
-	}
-
-	if((data.velocity_time_boot_ms.back()) < last_sample_time)
-	{
-		last_sample_time = data.velocity_time_boot_ms.back();
 	}
 
 	if((data.position_time_boot_ms.back()) < last_sample_time)
@@ -208,9 +197,9 @@ interpolate(Data_Buffer data, int sample_rate)
 	arma::interp1(angular_velocity_time_boot_ms, p, time_ms, p_interp);
 	arma::interp1(angular_velocity_time_boot_ms, q, time_ms, q_interp);
 	arma::interp1(angular_velocity_time_boot_ms, r, time_ms, r_interp);
-	arma::interp1(velocity_time_boot_ms, lvx, time_ms, lvx_interp);
-	arma::interp1(velocity_time_boot_ms, lvy, time_ms, lvy_interp);
-	arma::interp1(velocity_time_boot_ms, lvz, time_ms, lvz_interp);
+	arma::interp1(position_time_boot_ms, lvx, time_ms, lvx_interp);
+	arma::interp1(position_time_boot_ms, lvy, time_ms, lvy_interp);
+	arma::interp1(position_time_boot_ms, lvz, time_ms, lvz_interp);
 	arma::interp1(position_time_boot_ms, x, time_ms, x_interp);
 	arma::interp1(position_time_boot_ms, y, time_ms, y_interp);
 	arma::interp1(position_time_boot_ms, z, time_ms, z_interp);

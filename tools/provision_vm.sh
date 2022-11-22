@@ -34,9 +34,15 @@ chmod +x ./QGroundControl.AppImage
 #Install armadillo and its dependencies
 sudo apt install libarmadillo-dev
 
+
 #Install boost, needed for gazebo
 sudo apt-get install libboost-all-dev
 
+#Install boost, needed for gazebo
+sudo apt-get install libgazebo-dev
+
+#Install opencv, needed for gazebo
+sudo apt-get install libopencv-dev
 
 #Download QGroundControl and set executable permissions
 if [ -e !"cmake-3.25.0-rc4-linux-x86_64.sh" ]; then

@@ -35,26 +35,20 @@ using namespace std;
 struct Data_Buffer {
     std::vector<uint64_t> time_boot_ms; /*< [ms] Common Timestamp (time since system boot) used after interpolation.*/
 
-    // Body coordinates
     std::vector<uint64_t> attitude_time_boot_ms;    
     std::vector<float> roll; /*< [rad] Roll angle (-pi..+pi)*/
     std::vector<float> pitch; /*< [rad] Pitch angle (-pi..+pi)*/
     std::vector<float> yaw; /*< [rad] Yaw angle (-pi..+pi)*/
 
-    // Body coordinates
     std::vector<uint64_t> angular_velocity_time_boot_ms;
     std::vector<float> rollspeed; /*< [rad/s] Roll angular speed*/
     std::vector<float> pitchspeed; /*< [rad/s] Pitch angular speed*/
     std::vector<float> yawspeed; /*< [rad/s] Yaw angular speed*/
 
-    // Body coordinates
     std::vector<uint64_t> position_time_boot_ms;
     std::vector<float> x; /*< [m] X Position*/
     std::vector<float> y; /*< [m] Y Position*/
     std::vector<float> z; /*< [m] Z Position*/
-
-    // Body coordinates
-    std::vector<uint64_t> velocity_time_boot_ms;
     std::vector<float> lvx; /*< [m/s] X Speed*/
     std::vector<float> lvy; /*< [m/s] Y Speed*/
     std::vector<float> lvz; /*< [m/s] Z Speed*/
@@ -65,7 +59,6 @@ struct Data_Buffer {
         attitude_time_boot_ms.clear();
         angular_velocity_time_boot_ms.clear();
         position_time_boot_ms.clear();
-        velocity_time_boot_ms.clear();
 
         roll.clear(); /*< [rad] Roll angle (-pi..+pi)*/
         pitch.clear(); /*< [rad] Pitch angle (-pi..+pi)*/
@@ -97,10 +90,6 @@ struct Data_Buffer {
         {
             max_length = position_time_boot_ms.size();
         }
-        if(velocity_time_boot_ms.size() > max_length)
-        {
-            max_length = velocity_time_boot_ms.size();
-        }
         return max_length;
     }
 };
@@ -129,10 +118,9 @@ public:
     Buffer(int buffer_length_, string buffer_mode);
     ~Buffer();
 
-    void Buffer::insert(mavsdk::Telemetry::PositionBody, uint64_t timestamp);
+    void Buffer::insert(mavsdk::Telemetry::PositionVelocityNed, uint64_t timestamp);
     void Buffer::insert(mavsdk::Telemetry::EulerAngle, uint64_t timestamp);
     void Buffer::insert(mavsdk::Telemetry::AngularVelocityBody, uint64_t timestamp);
-    void Buffer::insert(mavsdk::Telemetry::VelocityBody, uint64_t timestamp);
     
     Data_Buffer clear();
 };
