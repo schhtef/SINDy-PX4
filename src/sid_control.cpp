@@ -85,8 +85,16 @@ setup (int argc, char **argv)
 	// instantiate telemetry object
 	Telemetry telemetry = Telemetry{system};
 
+	auto program_epoch = std::chrono::high_resolution_clock::now();
+
     telemetry.subscribe_position([](Telemetry::Position position) {
         std::cout << "Altitude: " << position.relative_altitude_m << " m\n";
+    });
+
+	telemetry.subscribe_position_velocity_ned([&input_buffer, program_epoch](Telemetry::PositionVelocityNed position) {
+        std::chrono::time_point now = std::chrono::high_resolution_clock::now();
+		auto sample_time = std::chrono::duration_cast<std::chrono::milliseconds>(now - program_epoch);
+		input_buffer.insert(position, sample_time);
     });
 
 	// --------------------------------------------------------------------------
