@@ -16,6 +16,8 @@
 //   Includes
 // ------------------------------------------------------------------------------
 #include "buffer.h"
+#include "interpolate.h"
+#include "regression.h"
 #include <string>
 #include <math.h>
 #include <chrono>
@@ -51,9 +53,14 @@ struct Vehicle_States{
     arma::rowvec theta; //Pitch angle [rad]
     arma::rowvec phi; //Yaw angle [rad]
 
-    //Misc
+    //Actuator output duty cycles, 1000us -> 0% 2000us -> 100% 
+    arma::rowvec actuator0; //Actuator 0 duty cycle [us]
+    arma::rowvec actuator1; //Actuator 1 duty cycle [us]
+    arma::rowvec actuator2; //Actuator 2 duty cycle [us]
+    arma::rowvec actuator3; //Actuator 3 duty cycle [us]
+
     arma::rowvec alpha; //Angle of attack [rad]
-    arma::rowvec beta;
+    arma::rowvec beta; //Sideslip angle [rad]
 };
 
 // ----------------------------------------------------------------------------------
@@ -68,13 +75,11 @@ private:
     pthread_t compute_tid = 0;
 
     arma::uvec threshold_vector(arma::vec vector, float threshold, string mode);
-    Vehicle_States interpolate(Data_Buffer data, int sample_rate);
     arma::mat compute_candidate_functions(Vehicle_States states);
     arma::mat STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float lambda);
     arma::rowvec threshold(arma::vec coefficients, arma::mat candidate_functions, float threshold);
     arma::mat get_derivatives(Vehicle_States states);
     void log_coeff(arma::mat matrix, string filename);
-    arma::vec SID::ridge_regression(arma::mat candidate_functions, arma::rowvec state, float lambda);
 
 public:
     SID();

@@ -1,16 +1,16 @@
 /**
- * @file interpolate.h
+ * @file regression.h
  *
- * @brief Interpolation definition
+ * @brief Regression definition
  *
- * Functions for interpolating telemetry
+ * Functions for performing regressions for use in STLSQ 
  *
  * @author Stefan Bichlmaier, <bichlmaier.stef@gmail.com>
  *
  */
 
-#ifndef INTERPOLATE_H_
-#define INTERPOLATE_H_
+#ifndef REGRESSION_H_
+#define REGRESSION_H_
 
 // ------------------------------------------------------------------------------
 //   Includes
@@ -18,8 +18,7 @@
 #include "buffer.h"
 #include "assert.h"
 #include <armadillo>
-#include "system_identification.h"
 
-Vehicle_States linear_interpolate(Data_Buffer data, int sample_rate);
+arma::vec ridge_regression(arma::mat candidate_functions, arma::rowvec state, float lambda);
 
 #endif

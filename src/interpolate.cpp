@@ -3,8 +3,7 @@
  *
  * @brief interpolation functions
  *
- * Performs zero insertion to align time series of different data sources
- * and linear or quadratic interpolation
+ * Uses arma's linear interpolation function to lerp a Data_Buffer type
  * 
  * @author Stefan Bichlmaier, <bichlmaier.stef@gmail.com>
  *
@@ -23,123 +22,107 @@
  * @param sample_rate rate for resampling data buffer
  * @return void
  */
-Data_Buffer interpolate(Data_Buffer data, int sample_rate)
+// Interpolates the data buffer and performs state transformations
+Vehicle_States linear_interpolate(Data_Buffer data, int sample_rate)
 {
-    using namespace arma;
+	//Perform the coordinate conversions to obtain the desired states
 
-    Data_Buffer interpolated_data;
+	//Euler angles
+	arma::rowvec psi = arma::conv_to<arma::rowvec>::from(data.roll);
+	arma::rowvec theta = arma::conv_to<arma::rowvec>::from(data.pitch);
+	arma::rowvec phi = arma::conv_to<arma::rowvec>::from(data.yaw);
+	arma::rowvec attitude_time_ms = arma::conv_to<arma::rowvec>::from(data.attitude_time_boot_ms);
 
-    // Find first sample This will be the time origin
- 	uint32_t first_sample_time = data.attitude_time_boot_ms.front();
+	//Angular Velocities
+	arma::rowvec p = arma::conv_to<arma::rowvec>::from(data.rollspeed);
+	arma::rowvec q = arma::conv_to<arma::rowvec>::from(data.pitchspeed);
+	arma::rowvec r = arma::conv_to<arma::rowvec>::from(data.yawspeed);
+	arma::rowvec angular_velocity_time_boot_ms = arma::conv_to<arma::rowvec>::from(data.angular_velocity_time_boot_ms);
 
-	if(data.local_time_boot_ms.front() < first_sample_time)
+	//Linear Velocities
+	arma::rowvec x_m_s = arma::conv_to<arma::rowvec>::from(data.x_m_s);
+	arma::rowvec y_m_s = arma::conv_to<arma::rowvec>::from(data.y_m_s);
+	arma::rowvec z_m_s = arma::conv_to<arma::rowvec>::from(data.z_m_s);
+
+	//Linear Positions
+	arma::rowvec x = arma::conv_to<arma::rowvec>::from(data.x);
+	arma::rowvec y = arma::conv_to<arma::rowvec>::from(data.y);
+	arma::rowvec z = arma::conv_to<arma::rowvec>::from(data.z);
+	arma::rowvec position_time_boot_ms = arma::conv_to<arma::rowvec>::from(data.position_time_boot_ms);
+
+	// Find latest first sample sample time, this will be the time origin
+	// Using latest so no extrapolation occurs
+ 	uint64_t first_sample_time = data.attitude_time_boot_ms.front();
+
+	if(data.angular_velocity_time_boot_ms.front() > first_sample_time)
 	{
-		first_sample_time = data.local_time_boot_ms.front();
+		first_sample_time = data.angular_velocity_time_boot_ms.front();
 	}
-    /*
-	if((data.wind_time_boot_ms.front()) < first_sample_time)
+
+	if((data.position_time_boot_ms.front()) > first_sample_time)
 	{
-		first_sample_time = data.wind_time_boot_ms.front();
+		first_sample_time = data.position_time_boot_ms.front();
 	}
-    */
 
-    // Find the buffer with the last sample.
-    //We will extrapolate to this value
- 	uint32_t last_sample_time = data.attitude_time_boot_ms.back();
+    // Find the buffer with the earliest last sample to avoid extrapolation
+ 	uint64_t last_sample_time = data.attitude_time_boot_ms.back();
 
-	if(data.local_time_boot_ms.back() > last_sample_time)
+	if(data.angular_velocity_time_boot_ms.back() < last_sample_time)
 	{
-		last_sample_time = data.local_time_boot_ms.back();
+		last_sample_time = data.angular_velocity_time_boot_ms.back();
 	}
-    /*
-	if((data.wind_time_boot_ms.back()) > last_sample_time)
+
+	if((data.position_time_boot_ms.back()) < last_sample_time)
 	{
-		last_sample_time = data.wind_time_boot_ms.back();
+		last_sample_time = data.position_time_boot_ms.back();
 	}
-    */
 
-    // Interpolate each parameter of interest
-    lerp_vector(data.roll, data.attitude_time_boot_ms, interpolated_data.roll, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
-    lerp_vector(data.pitch, data.attitude_time_boot_ms, interpolated_data.pitch, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
-    lerp_vector(data.yaw, data.attitude_time_boot_ms, interpolated_data.yaw, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
-    lerp_vector(data.pitchspeed, data.attitude_time_boot_ms, interpolated_data.pitchspeed, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
-    lerp_vector(data.rollspeed, data.attitude_time_boot_ms, interpolated_data.rollspeed, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
-    lerp_vector(data.yawspeed, data.attitude_time_boot_ms, interpolated_data.yawspeed, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
-    lerp_vector(data.lvx, data.local_time_boot_ms, interpolated_data.lvx, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
-    lerp_vector(data.lvy, data.local_time_boot_ms, interpolated_data.lvy, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
-    lerp_vector(data.lvz, data.local_time_boot_ms, interpolated_data.lvz, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
-    //lerp_vector(data.wind_x, data.wind_time_boot_ms, interpolated_data.wind_x, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
-    //lerp_vector(data.wind_y, data.wind_time_boot_ms, interpolated_data.wind_y, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
-    //lerp_vector(data.wind_z, data.wind_time_boot_ms, interpolated_data.wind_z, interpolated_data.time_boot_ms, first_sample_time, last_sample_time, sample_rate);
+	int number_of_samples = (last_sample_time-first_sample_time)*(sample_rate)/1000;
+	
+	// Generate a common time base
+	arma::rowvec time_ms = arma::linspace<arma::rowvec>(first_sample_time, last_sample_time, number_of_samples);
 
-    return interpolated_data;
-}
+	arma::rowvec psi_interp(number_of_samples);
+	arma::rowvec theta_interp(number_of_samples);
+	arma::rowvec phi_interp(number_of_samples);
+	arma::rowvec p_interp(number_of_samples);
+	arma::rowvec q_interp(number_of_samples);
+	arma::rowvec r_interp(number_of_samples);
+	arma::rowvec lvx_interp(number_of_samples);
+	arma::rowvec lvy_interp(number_of_samples);
+	arma::rowvec lvz_interp(number_of_samples);
+	arma::rowvec x_interp(number_of_samples);
+	arma::rowvec y_interp(number_of_samples);
+	arma::rowvec z_interp(number_of_samples);
 
-template <typename T, typename U>
-void lerp_vector(std::vector<T> y, std::vector<U> x, std::vector<T> &y_result, std::vector<U> &x_result, U start, U end, int sample_rate)
-{
-    if(x.size() != y.size())
-    {
-        fprintf(stderr, "Caution: X and Y series are different sizes\n");
-    }
-    //Since we are interpolating to a common time series, the result should be reset until the very last interpolation
-    if(x_result.size() != 0)
-    {
-        x_result.clear();
-    }
-    // Linearly interpolate local position from first_sample_time, if this vector has the first sample time,
-    // first interpolant will just be the first sample
-	typename std::vector<T>::iterator y_iterator = y.begin();
-	typename std::vector<U>::iterator x_iterator = x.begin();
+	arma::interp1(attitude_time_ms, psi, time_ms, psi_interp);
+	arma::interp1(attitude_time_ms, theta, time_ms, theta_interp);
+	arma::interp1(attitude_time_ms, phi, time_ms, phi_interp);
+	arma::interp1(angular_velocity_time_boot_ms, p, time_ms, p_interp);
+	arma::interp1(angular_velocity_time_boot_ms, q, time_ms, q_interp);
+	arma::interp1(angular_velocity_time_boot_ms, r, time_ms, r_interp);
+	arma::interp1(position_time_boot_ms, x_m_s, time_ms, lvx_interp);
+	arma::interp1(position_time_boot_ms, y_m_s, time_ms, lvy_interp);
+	arma::interp1(position_time_boot_ms, z_m_s, time_ms, lvz_interp);
+	arma::interp1(position_time_boot_ms, x, time_ms, x_interp);
+	arma::interp1(position_time_boot_ms, y, time_ms, y_interp);
+	arma::interp1(position_time_boot_ms, z, time_ms, z_interp);
+	
+	Vehicle_States state_buffer;
 
-    float sample_period = 1/(float)sample_rate;
-    U interpolant_time = start;
-    // Outputs
-    //std::vector<T> y_result;
-    //std::vector<T> x_result;
-    // Loop variables
-    T y_interpolant;
-    U x_interpolant;
+	state_buffer.p = p_interp;
+	state_buffer.q = q_interp;
+	state_buffer.r = r_interp;
+	state_buffer.psi = psi_interp;
+	state_buffer.theta = theta_interp;
+	state_buffer.phi = phi_interp;
+	state_buffer.u = lvx_interp;
+	state_buffer.v = lvy_interp;
+	state_buffer.w = lvz_interp;
+	state_buffer.x = x_interp;
+	state_buffer.y = y_interp;
+	state_buffer.z = z_interp;
+	state_buffer.num_samples = number_of_samples;
 
-    // Interpolate until we reach the last sample time, or the end of the vector is reached, which is unexpected
-    while(interpolant_time <= end)
-    {
-        // Interpolate consecutive variables
-        x_interpolant = interpolant_time;
-        y_interpolant = linear_interp(*(y_iterator), (*y_iterator+1),*(x_iterator), (*x_iterator+1), interpolant_time);
-
-        // Push interpolated value into a new vector
-        y_result.push_back(y_interpolant);
-        x_result.push_back(x_interpolant);
-
-        // Increment interpolant time
-        interpolant_time = interpolant_time+(sample_period*1000);
-
-        // If interpolant time is greater than the next sample, increment the iterator
-        // If the interpolant time is equal, the next loop will just result in the true sample, no interpolation
-        // This covers the extrapolation case a the beginning and end of the vector
-        // If the vector's first sample is after the start time, interpolant_time will keep increasing.
-        // If the vector's last sample is before the end time, interpolant_time will keep increasing but the iterators will not
-        if((interpolant_time > (*x_iterator)) && x_iterator != x.end())
-        {
-            y_iterator++;
-            x_iterator++;
-        }
-    }
-    // Sanity Checks
-    if(x_result.size() != y_result.size())
-    {
-        fprintf(stderr, "Caution: X and Y results are different sizes\n");
-    }
-
-    assert(x_result.size() == ((end-start))*sample_rate);
-}
-
-template <typename T, typename U>
-T linear_interp(T y0, T y1, U x0, U x1, U x)
-{
-    // Returns y0*(x1-x)/(x1-x0) + y1*(x-x0)/(x1-x0)
-    // Type casting with (T) to ensure output is of type T
-    T retval = y0*(((float)x1-(float)x)/((float)x1-(float)x0))+y1*(((float)x-(float)x0)/((float)x1-(float)x0));
-    return retval;
+	return state_buffer;
 }

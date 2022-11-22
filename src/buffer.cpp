@@ -43,8 +43,8 @@ Buffer::
 
 }
 
-// Insert a linear velocity message into the buffer
-void Buffer::insert(mavsdk::Telemetry::VelocityBody message, uint64_t timestamp)
+// Insert an angular velocity message into the buffer
+void Buffer::insert(mavsdk::Telemetry::Odometry message, uint64_t timestamp)
 {
 	// thread safe insertion into the buffer, ensures that no insertion occurs when buffer is full
 	// will cause the calling thread to wait if it is full
@@ -59,10 +59,16 @@ void Buffer::insert(mavsdk::Telemetry::VelocityBody message, uint64_t timestamp)
 		return buffer_counter < buffer_length; 
 	});
 
-	buffer.velocity_time_boot_ms.push_back(timestamp);
-	buffer.lvx.push_back(message.x_m_s);
-	buffer.lvy.push_back(message.y_m_s);
-	buffer.lvz.push_back(message.z_m_s);
+	buffer.position_time_boot_ms.push_back(timestamp);
+
+	buffer.x.push_back(message.position_body.x_m);
+	buffer.y.push_back(message.position_body.y_m);
+	buffer.z.push_back(message.position_body.z_m);
+
+	buffer.x_m_s.push_back(message.velocity_body.x_m_s);
+	buffer.y_m_s.push_back(message.velocity_body.y_m_s);
+	buffer.z_m_s.push_back(message.velocity_body.z_m_s);
+
 
 	if(buffer_mode == "length")
 	{
@@ -85,6 +91,7 @@ void Buffer::insert(mavsdk::Telemetry::VelocityBody message, uint64_t timestamp)
 	//unlock mutex
 	unique_lock.unlock();
 }
+
 
 // Insert an angular velocity message into the buffer
 void Buffer::insert(mavsdk::Telemetry::AngularVelocityBody message, uint64_t timestamp)
@@ -172,8 +179,8 @@ void Buffer::insert(mavsdk::Telemetry::EulerAngle message, uint64_t timestamp)
 	unique_lock.unlock();
 }
 
-// Insert a linear position message into the buffer
-void Buffer::insert(mavsdk::Telemetry::PositionVelocityNed message, uint64_t timestamp)
+// Insert an angular attitude message into the buffer
+void Buffer::insert(mavsdk::Telemetry::ActuatorOutputStatus actuator_message, uint64_t timestamp)
 {
 	// thread safe insertion into the buffer, ensures that no insertion occurs when buffer is full
 	// will cause the calling thread to wait if it is full
@@ -188,14 +195,12 @@ void Buffer::insert(mavsdk::Telemetry::PositionVelocityNed message, uint64_t tim
 		return buffer_counter < buffer_length; 
 	});
 
-	buffer.position_time_boot_ms.push_back(timestamp);
-	buffer.x.push_back(message.position.down_m);
-	buffer.y.push_back(message.position.east_m);
-	buffer.z.push_back(message.position.north_m);
-
-	buffer.lvx.push_back(message.position.down_m);
-	buffer.lvy.push_back(message.position.east_m);
-	buffer.lvz.push_back(message.position.north_m);
+	buffer.actuator_output_ms.push_back(timestamp);
+	//Insert the first four actuator outputs into respective actuators
+	buffer.actuator0.push_back(actuator_message.actuator.at(0));
+	buffer.actuator1.push_back(actuator_message.actuator.at(1));
+	buffer.actuator2.push_back(actuator_message.actuator.at(2));
+	buffer.actuator3.push_back(actuator_message.actuator.at(3));
 
 	if(buffer_mode == "length")
 	{
@@ -206,7 +211,7 @@ void Buffer::insert(mavsdk::Telemetry::PositionVelocityNed message, uint64_t tim
 	{
 		//Find current time in s
 		auto now = std::chrono::high_resolution_clock::now();
-		//Buffer counter is the time since clearing the buffer
+		//Buffer counter is the time since
 		buffer_counter = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count() - clear_time; 
 	}
 

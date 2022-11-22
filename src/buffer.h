@@ -31,7 +31,8 @@ using namespace std;
 //   Data structures
 // ------------------------------------------------------------------------------
 
-// Package the individual arrays into a struct
+// Contains separate vectors for each telemetry parameter of interest
+// Vectors containing time stamps are associated with data of each telemetry type
 struct Data_Buffer {
     std::vector<uint64_t> time_boot_ms; /*< [ms] Common Timestamp (time since system boot) used after interpolation.*/
 
@@ -49,9 +50,15 @@ struct Data_Buffer {
     std::vector<float> x; /*< [m] X Position*/
     std::vector<float> y; /*< [m] Y Position*/
     std::vector<float> z; /*< [m] Z Position*/
-    std::vector<float> lvx; /*< [m/s] X Speed*/
-    std::vector<float> lvy; /*< [m/s] Y Speed*/
-    std::vector<float> lvz; /*< [m/s] Z Speed*/
+    std::vector<float> x_m_s; /*< [m/s] X Speed*/
+    std::vector<float> y_m_s; /*< [m/s] Y Speed*/
+    std::vector<float> z_m_s; /*< [m/s] Z Speed*/
+
+    std::vector<uint64_t> actuator_output_ms;
+    std::vector<float> actuator0; /**/    
+    std::vector<float> actuator1; /*< */
+    std::vector<float> actuator2; /*< */
+    std::vector<float> actuator3; /**/
 
     void clear_buffers()
     {
@@ -70,9 +77,9 @@ struct Data_Buffer {
         x.clear(); /*< [m] X Position*/
         y.clear(); /*< [m] Y Position*/
         z.clear(); /*< [m] Z Position*/
-        lvx.clear(); /*< [m/s] X Speed*/
-        lvy.clear(); /*< [m/s] Y Speed*/
-        lvz.clear(); /*< [m/s] Z Speed*/
+        x_m_s.clear(); /*< [m/s] X Speed*/
+        y_m_s.clear(); /*< [m/s] Y Speed*/
+        z_m_s.clear(); /*< [m/s] Z Speed*/
     }
 
     int find_max_length()
@@ -118,10 +125,11 @@ public:
     Buffer(int buffer_length_, string buffer_mode);
     ~Buffer();
 
-    void Buffer::insert(mavsdk::Telemetry::PositionVelocityNed, uint64_t timestamp);
+    void Buffer::insert(mavsdk::Telemetry::Odometry, uint64_t timestamp);
     void Buffer::insert(mavsdk::Telemetry::EulerAngle, uint64_t timestamp);
     void Buffer::insert(mavsdk::Telemetry::AngularVelocityBody, uint64_t timestamp);
-    
+    void Buffer::insert(mavsdk::Telemetry::ActuatorOutputStatus, uint64_t timestamp);
+
     Data_Buffer clear();
 };
 

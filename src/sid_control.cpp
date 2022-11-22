@@ -12,33 +12,30 @@ int
 setup (int argc, char **argv)
 {
 
-	// --------------------------------------------------------------------------
-	//   PARSE THE COMMANDS
-	// --------------------------------------------------------------------------
+	// Set program defaults
 	string autopilot_path = "";
 	string logfile_directory = "/home/stefan/Documents/PX4-SID/tests/";
 	string buffer_mode = "length";
 	int buffer_length = 100;
 
-	// do the parse, will throw an int if it fails
+	// Parse command line arguments
 	parse_commandline(argc, argv, autopilot_path, logfile_directory, buffer_length, buffer_mode);
 	
-	// --------------------------------------------------------------------------
-	//   Instantiate MAVSDK Object
-	// --------------------------------------------------------------------------
 	using namespace mavsdk;
 
+	// Instantiate MAVSDK Object
     Mavsdk mavsdk;
-    ConnectionResult connection_result = mavsdk.add_any_connection(argv[1]);
+	// Find autopilot system using UDP or Serial device path
+    ConnectionResult connection_result = mavsdk.add_any_connection(autopilot_path);
 
 	// Wait for the system to connect
 	while (mavsdk.systems().size() == 0) {
+		std::cout << "Waiting to connect\n";
 	}
 
 	// make sure we have connected successfully to the autopilot
 	if (connection_result != ConnectionResult::Success) {
 		std::cerr << "Connection failed: " << connection_result << '\n';
-		return 1;
 	}
 
 	// assuming one autopilot connected, get a pointer to the first one connected
@@ -91,10 +88,23 @@ setup (int argc, char **argv)
         std::cout << "Altitude: " << position.relative_altitude_m << " m\n";
     });
 
-	telemetry.subscribe_position_velocity_ned([&input_buffer, program_epoch](Telemetry::PositionVelocityNed position) {
+	// Subscribe to telemetry sources, inserting into the buffer on every new telemetry item
+	telemetry.subscribe_attitude_euler([&input_buffer, program_epoch](Telemetry::EulerAngle attitude) {
         auto now = std::chrono::high_resolution_clock::now();
 		uint64_t sample_time = std::chrono::duration_cast<std::chrono::milliseconds>(now - program_epoch).count();
-		input_buffer.insert(position, sample_time);
+		input_buffer.insert(attitude, sample_time);
+    });
+
+	telemetry.subscribe_attitude_angular_velocity_body([&input_buffer, program_epoch](Telemetry::AngularVelocityBody angular_velocity) {
+        auto now = std::chrono::high_resolution_clock::now();
+		uint64_t sample_time = std::chrono::duration_cast<std::chrono::milliseconds>(now - program_epoch).count();
+		input_buffer.insert(angular_velocity, sample_time);
+    });
+
+	telemetry.subscribe_odometry([&input_buffer, program_epoch](Telemetry::Odometry state) {
+        auto now = std::chrono::high_resolution_clock::now();
+		uint64_t sample_time = std::chrono::duration_cast<std::chrono::milliseconds>(now - program_epoch).count();
+		input_buffer.insert(state, sample_time);
     });
 
 	// --------------------------------------------------------------------------
