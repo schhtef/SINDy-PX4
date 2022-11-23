@@ -16,7 +16,6 @@
 //   Includes
 // ------------------------------------------------------------------------------
 #include "buffer.h"
-#include "interpolate.h"
 #include "regression.h"
 #include <string>
 #include <math.h>
@@ -80,6 +79,7 @@ private:
     arma::rowvec threshold(arma::vec coefficients, arma::mat candidate_functions, float threshold);
     arma::mat get_derivatives(Vehicle_States states);
     void log_coeff(arma::mat matrix, string filename);
+    Vehicle_States linear_interpolate(Data_Buffer data, int sample_rate);
 
 public:
     SID();

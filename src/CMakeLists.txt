@@ -8,8 +8,8 @@ project(SINDy_offboard)
 add_executable(SINDy_offboard
     sid_control.cpp
     buffer.cpp
-    interpolate.cpp
     system_identification.cpp
+    regression.cpp
 )
 
 find_package(MAVSDK REQUIRED)

@@ -33,7 +33,7 @@ int main(int argc, char **argv);
 //Device connection and configuration
 int setup(int argc, char **argv);
 //Runtime command handling
-void flight_loop(std::shared_ptr<mavsdk::System> system, SID &SINDy, Buffer &input_buffer, string logfile_directory);
+void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry telemetry, SID &SINDy, Buffer &input_buffer, std::string logfile_directory);
 void parse_commandline(int argc, char **argv, string &autopilot_path, string &logfile_directory, int &buffer_length, string &buffer_mode);
 //Interrupt handling
 SID *SINDy_quit;

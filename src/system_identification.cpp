@@ -96,12 +96,21 @@ log_coeff(arma::mat matrix, string filename)
 	std::ofstream myfile;
     myfile.open (filename);
 	myfile << ",p, q, r, u, v, w" << endl;
-	std::vector<string> candidates = {"1", "x", "y", "z", "psi", "theta", "phi",
-									"x^2", "xy", "xz", "xpsi", "xtheta", "xphi", 
-									"y^2", "yz", "ypsi", "ytheta", "yphi", "z^2",
-									"zpsi", "ztheta", "zphi","psi^2","psitheta",
-									"psiphi", "theta^2", "thetaphi", "phi^2"};
+	std::vector<string> candidates = {"1", "x", "y", "z", "psi", "theta", "phi", "u0", "u1", "u2", "u3",
+									"x^2", "xy", "xz", "xpsi", "xtheta", "xphi", "xu0", "xu1", "xu2", "xu3",
+									"y^2", "yz", "ypsi", "ytheta","yphi", "yu0", "yu1", "yu2", "yu3",
+									"z^2", "zpsi", "ztheta", "zphi","zu0", "zu1", "zu2", "zu3",
+									"psi^2","psitheta",	"psiphi", "psiu0", "psiu1", "psiu2", "psiu3", 							
+									"theta^2", "thetaphi", "thetau0", "thetau1", "thetau2", "thetau3",
+									"phi^2", "phiu0", "phiu1", "phiu2", "phiu3", 
+									"u0^2", "u0u1", "u0u2", "u0u3"
+									"u1^2", "u1u2", "u1u3",
+									"u2^2", "u2u3",
+									"u3^2"						
+									};
+	
 	assert(candidates.size() == matrix.n_rows);
+
 	for(int i = 0; i < matrix.n_rows; i++)
 	{
 		myfile << candidates[i] << ",";
@@ -112,6 +121,118 @@ log_coeff(arma::mat matrix, string filename)
 		myfile << "\n";
 	}
 	myfile.close();
+}
+
+/**
+ * Interpolate the samples in Mavlink Message Buffer
+ *
+ * @param data Struct containing vectors of mavlink messages
+ * @param sample_rate rate for resampling data buffer
+ * @return void
+ */
+// Interpolates the data buffer and performs state transformations
+Vehicle_States SID::linear_interpolate(Data_Buffer data, int sample_rate)
+{
+	//Perform the coordinate conversions to obtain the desired states
+
+	//Euler angles
+	arma::rowvec psi = arma::conv_to<arma::rowvec>::from(data.roll);
+	arma::rowvec theta = arma::conv_to<arma::rowvec>::from(data.pitch);
+	arma::rowvec phi = arma::conv_to<arma::rowvec>::from(data.yaw);
+	arma::rowvec attitude_time_ms = arma::conv_to<arma::rowvec>::from(data.attitude_time_boot_ms);
+
+	//Angular Velocities
+	arma::rowvec p = arma::conv_to<arma::rowvec>::from(data.rollspeed);
+	arma::rowvec q = arma::conv_to<arma::rowvec>::from(data.pitchspeed);
+	arma::rowvec r = arma::conv_to<arma::rowvec>::from(data.yawspeed);
+	arma::rowvec angular_velocity_time_boot_ms = arma::conv_to<arma::rowvec>::from(data.angular_velocity_time_boot_ms);
+
+	//Linear Velocities
+	arma::rowvec x_m_s = arma::conv_to<arma::rowvec>::from(data.x_m_s);
+	arma::rowvec y_m_s = arma::conv_to<arma::rowvec>::from(data.y_m_s);
+	arma::rowvec z_m_s = arma::conv_to<arma::rowvec>::from(data.z_m_s);
+
+	//Linear Positions
+	arma::rowvec x = arma::conv_to<arma::rowvec>::from(data.x);
+	arma::rowvec y = arma::conv_to<arma::rowvec>::from(data.y);
+	arma::rowvec z = arma::conv_to<arma::rowvec>::from(data.z);
+	arma::rowvec position_time_boot_ms = arma::conv_to<arma::rowvec>::from(data.position_time_boot_ms);
+
+	// Find latest first sample sample time, this will be the time origin
+	// Using latest so no extrapolation occurs
+ 	uint64_t first_sample_time = data.attitude_time_boot_ms.front();
+
+	if(data.angular_velocity_time_boot_ms.front() > first_sample_time)
+	{
+		first_sample_time = data.angular_velocity_time_boot_ms.front();
+	}
+
+	if((data.position_time_boot_ms.front()) > first_sample_time)
+	{
+		first_sample_time = data.position_time_boot_ms.front();
+	}
+
+    // Find the buffer with the earliest last sample to avoid extrapolation
+ 	uint64_t last_sample_time = data.attitude_time_boot_ms.back();
+
+	if(data.angular_velocity_time_boot_ms.back() < last_sample_time)
+	{
+		last_sample_time = data.angular_velocity_time_boot_ms.back();
+	}
+
+	if((data.position_time_boot_ms.back()) < last_sample_time)
+	{
+		last_sample_time = data.position_time_boot_ms.back();
+	}
+
+	int number_of_samples = (last_sample_time-first_sample_time)*(sample_rate)/1000;
+	
+	// Generate a common time base
+	arma::rowvec time_ms = arma::linspace<arma::rowvec>(first_sample_time, last_sample_time, number_of_samples);
+
+	arma::rowvec psi_interp(number_of_samples);
+	arma::rowvec theta_interp(number_of_samples);
+	arma::rowvec phi_interp(number_of_samples);
+	arma::rowvec p_interp(number_of_samples);
+	arma::rowvec q_interp(number_of_samples);
+	arma::rowvec r_interp(number_of_samples);
+	arma::rowvec lvx_interp(number_of_samples);
+	arma::rowvec lvy_interp(number_of_samples);
+	arma::rowvec lvz_interp(number_of_samples);
+	arma::rowvec x_interp(number_of_samples);
+	arma::rowvec y_interp(number_of_samples);
+	arma::rowvec z_interp(number_of_samples);
+
+	arma::interp1(attitude_time_ms, psi, time_ms, psi_interp);
+	arma::interp1(attitude_time_ms, theta, time_ms, theta_interp);
+	arma::interp1(attitude_time_ms, phi, time_ms, phi_interp);
+	arma::interp1(angular_velocity_time_boot_ms, p, time_ms, p_interp);
+	arma::interp1(angular_velocity_time_boot_ms, q, time_ms, q_interp);
+	arma::interp1(angular_velocity_time_boot_ms, r, time_ms, r_interp);
+	arma::interp1(position_time_boot_ms, x_m_s, time_ms, lvx_interp);
+	arma::interp1(position_time_boot_ms, y_m_s, time_ms, lvy_interp);
+	arma::interp1(position_time_boot_ms, z_m_s, time_ms, lvz_interp);
+	arma::interp1(position_time_boot_ms, x, time_ms, x_interp);
+	arma::interp1(position_time_boot_ms, y, time_ms, y_interp);
+	arma::interp1(position_time_boot_ms, z, time_ms, z_interp);
+	
+	Vehicle_States state_buffer;
+
+	state_buffer.p = p_interp;
+	state_buffer.q = q_interp;
+	state_buffer.r = r_interp;
+	state_buffer.psi = psi_interp;
+	state_buffer.theta = theta_interp;
+	state_buffer.phi = phi_interp;
+	state_buffer.u = lvx_interp;
+	state_buffer.v = lvy_interp;
+	state_buffer.w = lvz_interp;
+	state_buffer.x = x_interp;
+	state_buffer.y = y_interp;
+	state_buffer.z = z_interp;
+	state_buffer.num_samples = number_of_samples;
+
+	return state_buffer;
 }
 
 // Returns indeces of vector which correspond to values which are above or below a threshold value
@@ -224,11 +345,15 @@ compute_candidate_functions(Vehicle_States states)
 	arma::rowvec bias(states.num_samples);
 	bias.ones();
 	states.bias = bias;
+
 	//join states into matrix so we can iterate over them all
 	arma::mat state_matrix = arma::join_vert(states.bias, states.x);
 	state_matrix = arma::join_vert(state_matrix, states.y, states.z, states.psi);
 	state_matrix = arma::join_vert(state_matrix, states.theta, states.phi);
-	int num_features = state_matrix.n_rows*(state_matrix.n_rows+1)/2; //8*(8-1)/2
+	state_matrix = arma::join_vert(state_matrix, states.actuator0, states.actuator1);
+	state_matrix = arma::join_vert(state_matrix, states.actuator2, states.actuator3);
+
+	int num_features = state_matrix.n_rows*(state_matrix.n_rows+1)/2; //Compute total number of combinations of vehicle states
 	arma::mat candidate_functions(num_features, states.num_samples);
 	//Index to keep track of insertion into kandidate function6
 	int candidate_index = 0;

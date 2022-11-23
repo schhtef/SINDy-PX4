@@ -107,6 +107,12 @@ setup (int argc, char **argv)
 		input_buffer.insert(state, sample_time);
     });
 
+	telemetry.subscribe_actuator_output_status([&input_buffer, program_epoch](Telemetry::ActuatorOutputStatus actuator){
+        auto now = std::chrono::high_resolution_clock::now();
+		uint64_t sample_time = std::chrono::duration_cast<std::chrono::milliseconds>(now - program_epoch).count();
+		input_buffer.insert(actuator, sample_time);
+	});
+
 	// --------------------------------------------------------------------------
 	//   RUN COMMANDS
 	// --------------------------------------------------------------------------
@@ -122,8 +128,7 @@ setup (int argc, char **argv)
 //   COMMANDS
 // ------------------------------------------------------------------------------
 
-void
-flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry telemetry, SID &SINDy, Buffer &input_buffer, string logfile_directory)
+void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry telemetry, SID &SINDy, Buffer &input_buffer, std::string logfile_directory)
 {
 	using namespace mavsdk;
 

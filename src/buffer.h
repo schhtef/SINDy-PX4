@@ -125,10 +125,10 @@ public:
     Buffer(int buffer_length_, string buffer_mode);
     ~Buffer();
 
-    void Buffer::insert(mavsdk::Telemetry::Odometry, uint64_t timestamp);
-    void Buffer::insert(mavsdk::Telemetry::EulerAngle, uint64_t timestamp);
-    void Buffer::insert(mavsdk::Telemetry::AngularVelocityBody, uint64_t timestamp);
-    void Buffer::insert(mavsdk::Telemetry::ActuatorOutputStatus, uint64_t timestamp);
+    void insert(mavsdk::Telemetry::Odometry, uint64_t timestamp);
+    void insert(mavsdk::Telemetry::EulerAngle, uint64_t timestamp);
+    void insert(mavsdk::Telemetry::AngularVelocityBody, uint64_t timestamp);
+    void insert(mavsdk::Telemetry::ActuatorOutputStatus, uint64_t timestamp);
 
     Data_Buffer clear();
 };
