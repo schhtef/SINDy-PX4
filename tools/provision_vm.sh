@@ -44,17 +44,8 @@ sudo apt-get install libgazebo-dev
 #Install opencv, needed for gazebo
 sudo apt-get install libopencv-dev
 
-#Download QGroundControl and set executable permissions
-if [ -e !"cmake-3.25.0-rc4-linux-x86_64.sh" ]; then
-#if it already exists, do nothing
-    :
-else
-    wget https://github.com/Kitware/CMake/releases/download/v3.25.0-rc4/cmake-3.25.0-rc4-linux-x86_64.sh
-fi
-
-#Download and install CMAKE
-chmod +x cmake-3.25.0-rc4-linux-x86_64.sh
-./cmake-3.25.0-rc4-linux-x86_64.sh
+#Install cmake
+sudo apt install cmake
 
 #Download and install MAVSDK
 wget https://github.com/mavlink/MAVSDK/releases/download/v1.4.7/libmavsdk-dev_1.4.7_ubuntu20.04_amd64.deb

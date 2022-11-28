@@ -21,6 +21,7 @@
 #include <math.h>
 #include <chrono>
 #include <armadillo>
+#include <thread>
 
 // Vehicle states
 struct Vehicle_States{
@@ -86,10 +87,9 @@ public:
     SID(Buffer *input_buffer_);
     ~SID();
 
-    void start();
     void stop();
     void handle_quit(int sig);
-    void compute_thread();
+    void sindy_compute();
 
     bool compute_status;
     std::atomic<bool> armed;

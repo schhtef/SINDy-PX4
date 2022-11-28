@@ -70,16 +70,16 @@ setup (int argc, char **argv)
 	 *
 	 */
 
-	SINDy_quit = &SINDy;
-	signal(SIGINT,quit_handler);
+	//SINDy_quit = &SINDy;
+	//signal(SIGINT,quit_handler);
 
 	/*
-	 * Start the port, autopilot_interface, and logger
-	 * This is where the port is opened, and read and write threads are started.
+	 * Start the system identification thread
 	 */
-	SINDy.start();
+	std::thread compute_thread(SID::sindy_compute, &SINDy);
 
 	// instantiate telemetry object
+	
 	Telemetry telemetry = Telemetry{system};
 
 	auto program_epoch = std::chrono::high_resolution_clock::now();
@@ -112,6 +112,7 @@ setup (int argc, char **argv)
 		uint64_t sample_time = std::chrono::duration_cast<std::chrono::milliseconds>(now - program_epoch).count();
 		input_buffer.insert(actuator, sample_time);
 	});
+	
 
 	// --------------------------------------------------------------------------
 	//   RUN COMMANDS
@@ -128,7 +129,7 @@ setup (int argc, char **argv)
 //   COMMANDS
 // ------------------------------------------------------------------------------
 
-void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry telemetry, SID &SINDy, Buffer &input_buffer, std::string logfile_directory)
+void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &telemetry, SID &SINDy, Buffer &input_buffer, std::string logfile_directory)
 {
 	using namespace mavsdk;
 
@@ -234,8 +235,9 @@ void parse_commandline(int argc, char **argv, string &autopilot_path, string &lo
 {
 
 	// string for command line usage
-	const char *commandline_usage = "usage: mavlink_control [-d <devicename> -b <baudrate>] [-u <udp_ip> -p <udp_port>] [-a ]";
-		char *val;
+	std::string commandline_usage = "usage: SID_offboard -d <Device Path>\n udp://[host][:port]\ntcp://[host][:port]\n serial://[path][:baudrate]";
+	commandline_usage += "-l <logfile directory>\n -b <buffer length>\n -m <buffer mode>\n time or length";
+	char *val;
 	// Read input arguments
 	for (int i = 1; i < argc; i++) { // argv[0] is "mavlink"
 		val = argv[i];
@@ -283,6 +285,11 @@ void parse_commandline(int argc, char **argv, string &autopilot_path, string &lo
 		if (strcmp(argv[i], "-m") == 0 || strcmp(argv[i], "--mode") == 0) {
 			if (argc > i + 1) {
 				i++;
+				if(buffer_mode != "length" || buffer_mode != "time")
+				{
+					printf("%s\n",commandline_usage);
+					throw EXIT_FAILURE;					
+				}
 				buffer_mode = (argv[i]);
 			} else {
 				printf("%s\n",commandline_usage);
@@ -302,6 +309,7 @@ void parse_commandline(int argc, char **argv, string &autopilot_path, string &lo
 //   Quit Signal Handler
 // ------------------------------------------------------------------------------
 // this function is called when you press Ctrl-C
+/*
 void
 quit_handler( int sig )
 {
@@ -318,6 +326,7 @@ quit_handler( int sig )
 	exit(0);
 
 }
+*/
 
 
 // ------------------------------------------------------------------------------

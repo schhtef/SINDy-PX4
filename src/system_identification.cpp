@@ -39,7 +39,7 @@ SID::
 }
 
 void SID::
-compute_thread()
+sindy_compute()
 {
     compute_status = true;
 	arma::running_stat<double> stats;
@@ -383,32 +383,6 @@ get_derivatives(Vehicle_States states)
 	return derivatives;
 }
 
-void SID::
-start()
-{
-	printf("START SINDy COMPUTE THREAD \n");
-	int result = pthread_create( &compute_tid, NULL, &start_SID_compute_thread, this);
-	if ( result ) throw result;
-}
-
-void SID::
-stop()
-{
-	// --------------------------------------------------------------------------
-	//   CLOSE THREADS
-	// --------------------------------------------------------------------------
-	printf("STOP SINDy THREAD\n");
-
-	// signal exit
-	time_to_exit = true;
-
-	// wait for exit
-	pthread_join(compute_tid ,NULL);
-
-	// now the read and write threads are closed
-	printf("\n");
-}
-
 // ------------------------------------------------------------------------------
 //   Quit Handler
 // ------------------------------------------------------------------------------
@@ -425,21 +399,4 @@ handle_quit( int sig )
 		fprintf(stderr,"Warning, could not stop SINDy\n");
 	}
 
-}
-
-// ------------------------------------------------------------------------------
-//  Pthread Starter Helper Functions
-// ------------------------------------------------------------------------------
-
-void*
-start_SID_compute_thread(void *args)
-{
-	// takes a SID object
-	SID *SINDy = (SID *)args;
-
-	// run the object's read thread
-	SINDy->compute_thread();
-
-	// done!
-	return NULL;
 }
