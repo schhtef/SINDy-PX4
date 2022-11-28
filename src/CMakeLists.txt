@@ -1,9 +1,17 @@
 cmake_minimum_required(VERSION 3.10.2)
 
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(SINDy_offboard)
+
+#add_definitions("-Wall -Wextra -Werror")
+add_definitions("-std=c++2a")
+
+include_directories(/usr/local/include/mavsdk)
+link_directories(/usr/local/lib)
 
 add_executable(SINDy_offboard
     sid_control.cpp
@@ -18,13 +26,6 @@ find_package(Armadillo REQUIRED)
 include_directories(${ARMADILLO_INCLUDE_DIRS})
 
 target_link_libraries(SINDy_offboard
-    MAVSDK::mavsdk
-    #MAVSDK::mavsdk_telemetry
-    ${ARMADILLO_INCLUDE_DIRS}
+    mavsdk
+    mavsdk_telemetry
 )
-
-if(NOT MSVC)
-    add_compile_options(takeoff_and_land PRIVATE -Wall -Wextra)
-else()
-    add_compile_options(takeoff_and_land PRIVATE -WX -W2)
-endif()
