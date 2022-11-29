@@ -72,7 +72,7 @@ class SID
 private:
     Buffer *input_buffer;
     bool time_to_exit = false;
-    pthread_t compute_tid = 0;
+    std::thread compute_thread;
 
     arma::uvec threshold_vector(arma::vec vector, float threshold, string mode);
     arma::mat compute_candidate_functions(Vehicle_States states);
@@ -88,6 +88,7 @@ public:
     ~SID();
 
     void stop();
+    void start();
     void handle_quit(int sig);
     void sindy_compute();
 

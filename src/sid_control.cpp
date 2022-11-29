@@ -28,17 +28,22 @@ setup (int argc, char **argv)
 	// Find autopilot system using UDP or Serial device path
     ConnectionResult connection_result = mavsdk.add_any_connection(autopilot_path);
 
+/*
 	// Wait for the system to connect
 	while (mavsdk.systems().size() == 0) {
 		std::cout << "Waiting to connect\n";
 	}
+*/
 
 	// make sure we have connected successfully to the autopilot
 	if (connection_result != ConnectionResult::Success) {
 		std::cerr << "Connection failed: " << connection_result << '\n';
 	}
 
-	// assuming one autopilot connected, get a pointer to the first one connected
+	while (mavsdk.systems().size() == 0) {
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+	}
+	// System got discovered.
 	std::shared_ptr<System> system = mavsdk.systems()[0];
 
 	/*
@@ -76,7 +81,7 @@ setup (int argc, char **argv)
 	/*
 	 * Start the system identification thread
 	 */
-	std::thread compute_thread(SID::sindy_compute, &SINDy);
+	SINDy.start();
 
 	// instantiate telemetry object
 	
@@ -123,7 +128,6 @@ setup (int argc, char **argv)
 	return 0;
 
 }
-
 
 // ------------------------------------------------------------------------------
 //   COMMANDS
@@ -184,6 +188,7 @@ void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &tele
 	// Primary event loop
 	while(1)
 	{
+		/*
 		switch(system_state)
 		{
 			case GROUND_IDLE_STATE:
@@ -215,6 +220,7 @@ void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &tele
 				//TODO implement switch to active system identification state
 			break;
 		}
+		*/
 	}
 	printf("\n");
 
@@ -244,7 +250,7 @@ void parse_commandline(int argc, char **argv, string &autopilot_path, string &lo
 		printf("%s\n",val);
 		// Help
 		if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
-			printf("%s\n",commandline_usage);
+			std::cout << commandline_usage;
 			throw EXIT_FAILURE;
 		}
 
@@ -254,7 +260,7 @@ void parse_commandline(int argc, char **argv, string &autopilot_path, string &lo
 				i++;
 				autopilot_path = (argv[i]);
 			} else {
-				printf("%s\n",commandline_usage);
+				std::cout << commandline_usage;
 				throw EXIT_FAILURE;
 			}
 		}
@@ -265,7 +271,7 @@ void parse_commandline(int argc, char **argv, string &autopilot_path, string &lo
 				i++;
 				logfile_directory = (argv[i]);
 			} else {
-				printf("%s\n",commandline_usage);
+				std::cout << commandline_usage;
 				throw EXIT_FAILURE;
 			}
 		}
@@ -276,7 +282,7 @@ void parse_commandline(int argc, char **argv, string &autopilot_path, string &lo
 				i++;
 				buffer_length = atoi(argv[i]);
 			} else {
-				printf("%s\n",commandline_usage);
+				std::cout << commandline_usage;
 				throw EXIT_FAILURE;
 			}
 		}
@@ -285,14 +291,9 @@ void parse_commandline(int argc, char **argv, string &autopilot_path, string &lo
 		if (strcmp(argv[i], "-m") == 0 || strcmp(argv[i], "--mode") == 0) {
 			if (argc > i + 1) {
 				i++;
-				if(buffer_mode != "length" || buffer_mode != "time")
-				{
-					printf("%s\n",commandline_usage);
-					throw EXIT_FAILURE;					
-				}
 				buffer_mode = (argv[i]);
 			} else {
-				printf("%s\n",commandline_usage);
+				//std::cout << commandline_usage;
 				throw EXIT_FAILURE;
 			}
 		}

@@ -39,6 +39,12 @@ SID::
 }
 
 void SID::
+start()
+{
+	compute_thread = std::thread(&SID::sindy_compute, this);
+}
+
+void SID::
 sindy_compute()
 {
     compute_status = true;
@@ -399,4 +405,22 @@ handle_quit( int sig )
 		fprintf(stderr,"Warning, could not stop SINDy\n");
 	}
 
+}
+
+void SID::
+stop()
+{
+	// --------------------------------------------------------------------------
+	//   CLOSE THREADS
+	// --------------------------------------------------------------------------
+	printf("STOP SINDy THREAD\n");
+
+	// signal exit
+	time_to_exit = true;
+
+	// wait for exit
+	compute_thread.join();
+
+	// now the read and write threads are closed
+	printf("\n");
 }

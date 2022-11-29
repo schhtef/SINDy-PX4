@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.10.2)
 
 #set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CXX_FLAGS_DEBUG  "-g")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,5 +29,6 @@ include_directories(${ARMADILLO_INCLUDE_DIRS})
 
 target_link_libraries(SINDy_offboard
     MAVSDK::mavsdk
+    pthread
     armadillo
 )

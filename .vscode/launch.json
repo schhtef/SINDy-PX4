@@ -35,7 +35,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/SINDy_offboard",
             "args": ["-d",
-            "udp://127.0.0.1:14540",
+            "udp://:14540",
             "-l",
             "../logs/",
             "-b",
