@@ -53,7 +53,6 @@ sindy_compute()
 	{ 
 		auto t1 = std::chrono::high_resolution_clock::now();
         Data_Buffer data = input_buffer->clear();
-		printf("Buffer Cleared \n");
 		auto t2 = std::chrono::high_resolution_clock::now();
 		Vehicle_States states = linear_interpolate(data, 200); // Resample input buffer and compute desired states
 		auto t3 = std::chrono::high_resolution_clock::now();
@@ -63,6 +62,10 @@ sindy_compute()
 		auto t5 = std::chrono::high_resolution_clock::now();
 		arma::mat coefficients = STLSQ(derivatives, candidate_functions, STLSQ_threshold, lambda); //Run STLSQ
 		auto t6 = std::chrono::high_resolution_clock::now();
+
+		assert(states.num_samples == candidate_functions.n_cols); // Check that number of samples are preserved after computing candidate functions
+		assert(candidate_functions.n_cols == derivatives.n_cols); // Check that number of samples in candidate functions and derivatives are equal
+		assert(candidate_functions.n_rows == coefficients.n_rows); // Check that number of features is equal in the candidate functions and solved coefficients
 
     	auto clear_buffer_time = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
     	auto interpolation_time = std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2);
@@ -89,7 +92,7 @@ sindy_compute()
 		if(armed)
 		{
 			//log_buffer_to_csv(interpolated_telemetry, filename);
-			log_coeff(coefficients, logfile_directory + "Flight Number: " + to_string(flight_number) + ".csv");
+			//log_coeff(coefficients, logfile_directory + "Flight Number: " + to_string(flight_number) + ".csv");
 		}
 	}
 	compute_status = false;
@@ -164,6 +167,14 @@ Vehicle_States SID::linear_interpolate(Data_Buffer data, int sample_rate)
 	arma::rowvec z = arma::conv_to<arma::rowvec>::from(data.z);
 	arma::rowvec position_time_boot_ms = arma::conv_to<arma::rowvec>::from(data.position_time_boot_ms);
 
+	//Actuator Outputs
+	arma::rowvec actuator0 = arma::conv_to<arma::rowvec>::from(data.actuator0);
+	arma::rowvec actuator1 = arma::conv_to<arma::rowvec>::from(data.actuator1);
+	arma::rowvec actuator2 = arma::conv_to<arma::rowvec>::from(data.actuator2);
+	arma::rowvec actuator3 = arma::conv_to<arma::rowvec>::from(data.actuator3);
+
+	arma::rowvec actuator_time_boot_ms = arma::conv_to<arma::rowvec>::from(data.actuator_output_ms);
+
 	// Find latest first sample sample time, this will be the time origin
 	// Using latest so no extrapolation occurs
  	uint64_t first_sample_time = data.attitude_time_boot_ms.front();
@@ -177,6 +188,10 @@ Vehicle_States SID::linear_interpolate(Data_Buffer data, int sample_rate)
 	{
 		first_sample_time = data.position_time_boot_ms.front();
 	}
+	if((data.actuator_output_ms.front()) > first_sample_time)
+	{
+		first_sample_time = data.actuator_output_ms.front();
+	}
 
     // Find the buffer with the earliest last sample to avoid extrapolation
  	uint64_t last_sample_time = data.attitude_time_boot_ms.back();
@@ -189,6 +204,10 @@ Vehicle_States SID::linear_interpolate(Data_Buffer data, int sample_rate)
 	if((data.position_time_boot_ms.back()) < last_sample_time)
 	{
 		last_sample_time = data.position_time_boot_ms.back();
+	}
+	if((data.actuator_output_ms.back()) < last_sample_time)
+	{
+		last_sample_time = data.actuator_output_ms.back();
 	}
 
 	int number_of_samples = (last_sample_time-first_sample_time)*(sample_rate)/1000;
@@ -208,6 +227,10 @@ Vehicle_States SID::linear_interpolate(Data_Buffer data, int sample_rate)
 	arma::rowvec x_interp(number_of_samples);
 	arma::rowvec y_interp(number_of_samples);
 	arma::rowvec z_interp(number_of_samples);
+	arma::rowvec actuator0_interp(number_of_samples);
+	arma::rowvec actuator1_interp(number_of_samples);
+	arma::rowvec actuator2_interp(number_of_samples);
+	arma::rowvec actuator3_interp(number_of_samples);
 
 	arma::interp1(attitude_time_ms, psi, time_ms, psi_interp);
 	arma::interp1(attitude_time_ms, theta, time_ms, theta_interp);
@@ -221,6 +244,10 @@ Vehicle_States SID::linear_interpolate(Data_Buffer data, int sample_rate)
 	arma::interp1(position_time_boot_ms, x, time_ms, x_interp);
 	arma::interp1(position_time_boot_ms, y, time_ms, y_interp);
 	arma::interp1(position_time_boot_ms, z, time_ms, z_interp);
+	arma::interp1(actuator_time_boot_ms, actuator0, time_ms, actuator0_interp);
+	arma::interp1(actuator_time_boot_ms, actuator1, time_ms, actuator1_interp);
+	arma::interp1(actuator_time_boot_ms, actuator2, time_ms, actuator2_interp);
+	arma::interp1(actuator_time_boot_ms, actuator3, time_ms, actuator3_interp);
 	
 	Vehicle_States state_buffer;
 
@@ -236,6 +263,10 @@ Vehicle_States SID::linear_interpolate(Data_Buffer data, int sample_rate)
 	state_buffer.x = x_interp;
 	state_buffer.y = y_interp;
 	state_buffer.z = z_interp;
+	state_buffer.actuator0 = actuator0_interp;
+	state_buffer.actuator1 = actuator1_interp;
+	state_buffer.actuator2 = actuator2_interp;
+	state_buffer.actuator3 = actuator3_interp;
 	state_buffer.num_samples = number_of_samples;
 
 	return state_buffer;
@@ -361,9 +392,9 @@ compute_candidate_functions(Vehicle_States states)
 
 	int num_features = state_matrix.n_rows*(state_matrix.n_rows+1)/2; //Compute total number of combinations of vehicle states
 	arma::mat candidate_functions(num_features, states.num_samples);
-	//Index to keep track of insertion into kandidate function6
-	int candidate_index = 0;
-	//Do for all columns
+	int candidate_index = 0; //Index to keep track of insertion into candidate functions
+	
+	//Compute second order combinations for each column
 	for(int i = 0; i <state_matrix.n_cols; i++)
 	{
 		//For each state, multiply by all others

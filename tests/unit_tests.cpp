@@ -3,9 +3,9 @@
 #include <vector>
 #include <algorithm>
 #include <math.h>
-#include <mlpack/methods/linear_regression/linear_regression.hpp>
 #include "csv.h"
-//#include "interpolate.h"
+#include <armadillo>
+#include "system_identification.h"
 
 using namespace std;
 void matrix_to_csv(vector<vector<float>> matrix, string filename, string header);
@@ -16,6 +16,18 @@ arma::mat compute_candidate_functions(arma::mat states);
 
 int main()
 {
+
+    //Generate simple y = x dataset to verify regression implementation
+    arma::mat x(1,100);
+    arma::rowvec y(1,100);
+
+    for(int i = 0; i < x.size(); i++)
+    {
+        x(i) = i;
+        y(i) = i;
+    }
+
+    arma::vec result = ridge_regression(x,y,0);
     /*
     * Generate derivatives for simple harmonic oscillator
     * dx/dt = -0.1x + 2y
@@ -63,7 +75,7 @@ int main()
     arma::mat datat = responses.t(); // The dataset itself.
     datat.save("derivatives.csv",arma::csv_ascii);
     states.save("states.csv", arma::csv_ascii);
-    */
+    
 
     //LinearRegression lr(data, responses.row(0), 0.05, false); //Initial regression on the candidate functions 
     //lr.Parameters().print();
@@ -95,7 +107,7 @@ int main()
 	std::cout << "StDev SINDy: " << stddev(time) << "us\n";
 
 
-/*
+
     //Generate data to interpolate
     float dt = 0.1;
     float t = 0.2;
@@ -120,138 +132,6 @@ int main()
 */
     return 0;
 }
-
-arma::mat
-compute_candidate_functions(arma::mat states)
-{
-	//Compute desired candidate functions from input buffer
-	//Generate ones
-	int num_features = (states.n_cols+1)*(states.n_cols+2)/2; //8*(8-1)/2
-    arma::mat candidate_functions(num_features, states.n_rows);
-
-	arma::rowvec bias(states.n_rows);
-	bias.ones();
-	//join states into matrix so we can iterate over them all
-	arma::mat state_matrix = states.t();
-    state_matrix = arma::join_vert(bias, state_matrix);
-	//Index to keep track of insertion into kandidate function6
-	int candidate_index = 0;
-	//Do for all columns
-	for(int i = 0; i <state_matrix.n_cols; i++)
-	{
-		//For each state, multiply by all others
-		for(int j = 0; j < state_matrix.n_rows; j++)
-		{
-			for(int k = j; k < state_matrix.n_rows; k++)
-			{
-				candidate_functions(candidate_index,i) = state_matrix(j,i)*state_matrix(k,i);
-				candidate_index++;
-			}
-		}
-		candidate_index = 0;
-	}
-	assert(candidate_functions.n_rows == num_features);
-	return candidate_functions;
-}
-
-arma::mat STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float lambda)
-{
-	//states are row indexes
-	//features are row indexes
-	//time domain samples are column indexes
-	bool notConverged = true;
-	int iteration;
-	int max_iterations = 10;
-
-    //Normalize candidates with respect to stdev
-    //candidate_functions = candidate_functions/candidate_functions.max();
-
-	using namespace mlpack::regression;
-	//To store result of STLSQ
-	arma::mat coefficients(candidate_functions.n_rows, states.n_rows);
-	
-	//Do STLSQ for each state
-	for(int i = 0; i < states.n_rows; i++)
-	{
-        iteration = 0;
-        notConverged = true;
-		//Keep track of which candidate functions have been discarded, so we can match resulting coefficents to candidate functions
-		arma::uvec coefficient_indexes(candidate_functions.n_rows);
-		//For each state, fill the column with indexes 0 to number of candidate functions
-		for(int j = 0; j < candidate_functions.n_rows; j++)
-		{
-			coefficient_indexes(j) = j;
-		}
-        arma::mat loop_candidate_functions = candidate_functions; //Keep copy since we will delete portions when thresholding
-		arma::rowvec state = states.row(i); //Get derivatives for current state
-		LinearRegression lr(candidate_functions, state, lambda, false); //Initial regression on the candidate functions
-		arma::vec loop_coefficients = lr.Parameters();
-		//Do subsequent regressions until converged
-		while(notConverged && iteration < max_iterations)
-		{
-			arma::uvec below_index = threshold_vector(loop_coefficients, threshold, "below"); //Find indexes of coefficients which are lower than the threshold value
-			coefficient_indexes.shed_rows(below_index); //Remove indexes which correspond to thresholded values
-            loop_candidate_functions.shed_rows(below_index);
-			arma::uvec above_index = threshold_vector(loop_coefficients, threshold, "above"); //Find indexes of coefficients which are higher than the threshold value
-            //lr.Train(candidate_functions.rows(above_index), state, false); //Regress again on thresholded candidate functions
-			lr.Train(loop_candidate_functions, state, false); //Initial regression on the candidate functions
-            //Check if coefficient vector has changed in size since last iteration
-			if(lr.Parameters().size() == loop_coefficients.size())
-			{
-				notConverged = false; //If thresholding hasn't shrunk the coefficient vector, we have converged
-			}
-			loop_coefficients = lr.Parameters();
-			iteration++; //Keep track of iteration number
-		}
-
-		if(loop_coefficients.size() == 0)
-		{
-			fprintf(stderr, "Thresholding parameter set too low and removed all coefficients in state %d\n", i);
-			coefficients.col(i).zeros(); //Set all coefficients to zero and don't attempt to match indexes
-			break;
-		}
-		
-		//Match coefficients to their candidate functions
-		arma::vec state_coefficients = arma::zeros(candidate_functions.n_rows);
-        //std::assert(coefficient_indexes.n_rows == loop_coefficients.n_rows);
-		for(int k = 0; k < coefficient_indexes.n_rows; k++)
-		{
-			state_coefficients(coefficient_indexes(k)) = loop_coefficients(k);
-		}
-		//loop coefficients is too small for the coefficient matrix
-		coefficients.col(i) = state_coefficients; //Solution for current state
-	}
-	return coefficients;
-}
-
-arma::uvec
-threshold_vector(arma::vec vector, float threshold, string mode)
-{
-    std::vector<uint> index;
-    if(mode == "below")
-    {
-        for(int i = 0; i < vector.size(); i++)
-        {
-            if(std::abs(vector(i)) < threshold)
-            {
-                index.push_back(i);
-            }
-        }
-    }
-    else if(mode == "above")
-    {
-        for(int i = 0; i < vector.size(); i++)
-        {
-            if(std::abs(vector(i)) > threshold)
-            {
-                index.push_back(i);
-            }
-        }        
-    }
-    arma::uvec thresholded_indexes = arma::conv_to<arma::uvec>::from(index);
-    return thresholded_indexes;
-}
-
 
 void matrix_to_csv(std::vector<float> matrix, string filename, string header)
 {

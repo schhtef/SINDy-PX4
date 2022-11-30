@@ -38,7 +38,7 @@ void parse_commandline(int argc, char **argv, string &autopilot_path, string &lo
 //Interrupt handling
 SID *SINDy_quit;
 int system_state = GROUND_IDLE_STATE;
-//void quit_handler( int sig );
+void quit_handler( int sig );
 
 //Filename creation
 char* generate_filename(int flights_since_reboot);

@@ -128,7 +128,7 @@ public:
     void insert(mavsdk::Telemetry::Odometry, uint64_t timestamp);
     void insert(mavsdk::Telemetry::EulerAngle, uint64_t timestamp);
     void insert(mavsdk::Telemetry::AngularVelocityBody, uint64_t timestamp);
-    void insert(mavsdk::Telemetry::ActuatorOutputStatus, uint64_t timestamp);
+    void insert(mavsdk::Telemetry::ActuatorControlTarget, uint64_t timestamp);
 
     Data_Buffer clear();
 };

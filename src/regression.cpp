@@ -14,7 +14,7 @@
 // ------------------------------------------------------------------------------
 #include "regression.h"
 
-// Ridge regression. Essentially least squares when lambda = 0
+// Ridge regression. Least squares when lambda = 0
 arma::vec ridge_regression(arma::mat candidate_functions, arma::rowvec state, float lambda)
 {
 	//Ridge regression is defined by the coefficients \beta = ((X'X+\lamdaI)^-1)X'y

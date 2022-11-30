@@ -13,7 +13,7 @@ setup (int argc, char **argv)
 {
 
 	// Set program defaults
-	string autopilot_path = "";
+	string autopilot_path = "udp://:14540";
 	string logfile_directory = "/home/stefan/Documents/PX4-SID/tests/";
 	string buffer_mode = "length";
 	int buffer_length = 100;
@@ -28,21 +28,16 @@ setup (int argc, char **argv)
 	// Find autopilot system using UDP or Serial device path
     ConnectionResult connection_result = mavsdk.add_any_connection(autopilot_path);
 
-/*
-	// Wait for the system to connect
-	while (mavsdk.systems().size() == 0) {
-		std::cout << "Waiting to connect\n";
-	}
-*/
-
 	// make sure we have connected successfully to the autopilot
 	if (connection_result != ConnectionResult::Success) {
 		std::cerr << "Connection failed: " << connection_result << '\n';
 	}
 
+	// Wait for system to connect
 	while (mavsdk.systems().size() == 0) {
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
+
 	// System got discovered.
 	std::shared_ptr<System> system = mavsdk.systems()[0];
 
@@ -75,8 +70,8 @@ setup (int argc, char **argv)
 	 *
 	 */
 
-	//SINDy_quit = &SINDy;
-	//signal(SIGINT,quit_handler);
+	SINDy_quit = &SINDy;
+	signal(SIGINT,quit_handler);
 
 	/*
 	 * Start the system identification thread
@@ -88,10 +83,6 @@ setup (int argc, char **argv)
 	Telemetry telemetry = Telemetry{system};
 
 	auto program_epoch = std::chrono::high_resolution_clock::now();
-
-    telemetry.subscribe_position([](Telemetry::Position position) {
-        std::cout << "Altitude: " << position.relative_altitude_m << " m\n";
-    });
 
 	// Subscribe to telemetry sources, inserting into the buffer on every new telemetry item
 	telemetry.subscribe_attitude_euler([&input_buffer, program_epoch](Telemetry::EulerAngle attitude) {
@@ -112,13 +103,12 @@ setup (int argc, char **argv)
 		input_buffer.insert(state, sample_time);
     });
 
-	telemetry.subscribe_actuator_output_status([&input_buffer, program_epoch](Telemetry::ActuatorOutputStatus actuator){
+	telemetry.subscribe_actuator_control_target([&input_buffer, program_epoch](Telemetry::ActuatorControlTarget actuator){
         auto now = std::chrono::high_resolution_clock::now();
 		uint64_t sample_time = std::chrono::duration_cast<std::chrono::milliseconds>(now - program_epoch).count();
 		input_buffer.insert(actuator, sample_time);
 	});
 	
-
 	// --------------------------------------------------------------------------
 	//   RUN COMMANDS
 	// --------------------------------------------------------------------------
@@ -126,7 +116,6 @@ setup (int argc, char **argv)
 
 	// woot!
 	return 0;
-
 }
 
 // ------------------------------------------------------------------------------
@@ -139,56 +128,11 @@ void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &tele
 
 	// Primary event variables
 	int flights_since_reboot = 0;
-
-	// Prepare command for setting message interval
-	// TODO put command generation into helper function
-	
-	/*
-	//Request actuator output status messages
-	mavlink_command_int_t com = { 0 };
-	com.target_system    = api.system_id; //Companion system id
-	com.target_component = api.autopilot_id; //Autopilot system id
-	com.command          = MAV_CMD_SET_MESSAGE_INTERVAL; //Command to send
-	com.param1           = MAVLINK_MSG_ID_ACTUATOR_OUTPUT_STATUS; //Requested Message
-	com.param2           = 100000; //Default message interval
-
-	// Request wind messages
-	mavlink_message_t message;
-	mavlink_msg_command_int_encode(api.system_id, api.companion_id, &message, &com);
-
-	// Send the message
-	int len = api.write_message(message);
-
-	if(!len)
-	{
-		fprintf(stderr, "Failed to set message interval\n");
-	}
-	
-	com = { 0 };
-	com.target_system    = api.system_id; //Companion system id
-	com.target_component = api.autopilot_id; //Autopilot system id
-	com.command          = MAV_CMD_SET_MESSAGE_INTERVAL; //Command to send
-	com.param1           = MAVLINK_MSG_ID_WIND_COV; //Requested Message
-	com.param2           = 100000; //Default message interval
-
-	mavlink_msg_command_int_encode(api.system_id, api.companion_id, &message, &com);
-
-	// Send the message
-	len = api.write_message(message);
-
-	if(!len)
-	{
-		fprintf(stderr, "Failed to set message interval\n");
-	}
-	// copy current messages
-	Mavlink_Messages messages = api.current_messages;
-	*/
-	
 	
 	// Primary event loop
 	while(1)
 	{
-		/*
+		
 		switch(system_state)
 		{
 			case GROUND_IDLE_STATE:
@@ -220,7 +164,7 @@ void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &tele
 				//TODO implement switch to active system identification state
 			break;
 		}
-		*/
+		
 	}
 	printf("\n");
 
@@ -310,9 +254,7 @@ void parse_commandline(int argc, char **argv, string &autopilot_path, string &lo
 //   Quit Signal Handler
 // ------------------------------------------------------------------------------
 // this function is called when you press Ctrl-C
-/*
-void
-quit_handler( int sig )
+void quit_handler( int sig )
 {
 	printf("\n");
 	printf("TERMINATING AT USER REQUEST\n");
@@ -327,7 +269,7 @@ quit_handler( int sig )
 	exit(0);
 
 }
-*/
+
 
 
 // ------------------------------------------------------------------------------

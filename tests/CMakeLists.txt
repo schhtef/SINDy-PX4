@@ -7,7 +7,7 @@ set(CMAKE_CXX_FLAGS_DEBUG  "-g")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-project(SINDy_offboard)
+project(SINDy_tests)
 
 #add_definitions("-Wall -Wextra -Werror")
 add_definitions("-std=c++17")
@@ -15,10 +15,8 @@ add_definitions("-std=c++17")
 include_directories(/usr/include/mavsdk)
 link_directories(/usr/lib)
 
-add_executable(SINDy_offboard
-    sid_control.cpp
-    buffer.cpp
-    system_identification.cpp
+add_executable(SINDy_tests
+    unit_tests.cpp
     regression.cpp
 )
 
@@ -27,8 +25,7 @@ find_package(Armadillo REQUIRED)
 
 include_directories(${ARMADILLO_INCLUDE_DIRS})
 
-target_link_libraries(SINDy_offboard
+target_link_libraries(SINDy_tests
     MAVSDK::mavsdk
-    pthread
     armadillo
 )

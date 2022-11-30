@@ -180,7 +180,7 @@ void Buffer::insert(mavsdk::Telemetry::EulerAngle message, uint64_t timestamp)
 }
 
 // Insert an angular attitude message into the buffer
-void Buffer::insert(mavsdk::Telemetry::ActuatorOutputStatus actuator_message, uint64_t timestamp)
+void Buffer::insert(mavsdk::Telemetry::ActuatorControlTarget actuator_message, uint64_t timestamp)
 {
 	// thread safe insertion into the buffer, ensures that no insertion occurs when buffer is full
 	// will cause the calling thread to wait if it is full
@@ -197,10 +197,10 @@ void Buffer::insert(mavsdk::Telemetry::ActuatorOutputStatus actuator_message, ui
 
 	buffer.actuator_output_ms.push_back(timestamp);
 	//Insert the first four actuator outputs into respective actuators
-	buffer.actuator0.push_back(actuator_message.actuator.at(0));
-	buffer.actuator1.push_back(actuator_message.actuator.at(1));
-	buffer.actuator2.push_back(actuator_message.actuator.at(2));
-	buffer.actuator3.push_back(actuator_message.actuator.at(3));
+	buffer.actuator0.push_back(actuator_message.controls.at(0));
+	buffer.actuator1.push_back(actuator_message.controls.at(1));
+	buffer.actuator2.push_back(actuator_message.controls.at(2));
+	buffer.actuator3.push_back(actuator_message.controls.at(3));
 
 	if(buffer_mode == "length")
 	{
