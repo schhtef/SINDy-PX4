@@ -33,3 +33,6 @@
 
 # Log files
 *.csv
+
+# Build directory
+build/*

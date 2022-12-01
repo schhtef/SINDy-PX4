@@ -1,19 +1,3 @@
-cmake_minimum_required(VERSION 3.10.2)
-
-#set(CMAKE_VERBOSE_MAKEFILE ON)
-set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_CXX_FLAGS_DEBUG  "-g")
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-project(SINDy_offboard)
-
-#add_definitions("-Wall -Wextra -Werror")
-add_definitions("-std=c++17")
-
-include_directories(/usr/include/mavsdk)
-link_directories(/usr/lib)
 
 add_executable(SINDy_offboard
     sid_control.cpp

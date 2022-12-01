@@ -5,9 +5,11 @@ Companion computer software for UAV system identification using the [Sparse Iden
 Run the provision_vm.sh script in SINDY-PX4/tools to install the necessary packages and dependencies. Running this should install everything you need for development, SIL, and HIL simulations.
 
 ## Building
-This project uses CMAKE as a build manager. You must generate the build files by navigating to `/build` then running `cmake ../src`
+This project uses CMAKE as a build manager. You must generate the build files by creating a build directory `mkdir build`, navigating to `/build` then running `cmake ../`
 
 With the buildfiles generated, run `cmake --build .` while in `/build` to generate the executable.
+
+To enable/disable compiling a suite of test cases, change the `SIL_BUILD_TEST` option to `off` in the root directory `CMakeLists.txt`.
 
 ## SIL Run Instructions
 1. Download the [QGroundControl .appimage](http://qgroundcontrol.com/downloads/)

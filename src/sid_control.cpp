@@ -14,7 +14,7 @@ setup (int argc, char **argv)
 
 	// Set program defaults
 	string autopilot_path = "udp://:14540";
-	string logfile_directory = "/home/stefan/Documents/PX4-SID/tests/";
+	string logfile_directory = "../logs/";
 	string buffer_mode = "length";
 	int buffer_length = 100;
 
@@ -82,9 +82,11 @@ setup (int argc, char **argv)
 	
 	Telemetry telemetry = Telemetry{system};
 
+	// set a base time at which the telemetry items are timestamped
 	auto program_epoch = std::chrono::high_resolution_clock::now();
 
 	// Subscribe to telemetry sources, inserting into the buffer on every new telemetry item
+	// Each subscription dispatches a thread which listens for a new item, calling the lambda function when one is received
 	telemetry.subscribe_attitude_euler([&input_buffer, program_epoch](Telemetry::EulerAngle attitude) {
         auto now = std::chrono::high_resolution_clock::now();
 		uint64_t sample_time = std::chrono::duration_cast<std::chrono::milliseconds>(now - program_epoch).count();
@@ -109,9 +111,7 @@ setup (int argc, char **argv)
 		input_buffer.insert(actuator, sample_time);
 	});
 	
-	// --------------------------------------------------------------------------
-	//   RUN COMMANDS
-	// --------------------------------------------------------------------------
+	// Run the main event loop
 	flight_loop(system, telemetry, SINDy, input_buffer, logfile_directory);
 
 	// woot!
@@ -126,10 +126,10 @@ void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &tele
 {
 	using namespace mavsdk;
 
-	// Primary event variables
+	// Keep track of number of times the autopilot has been armed to separate flight tests into different files
 	int flights_since_reboot = 0;
 	
-	// Primary event loop
+	// Main event loop
 	while(1)
 	{
 		
