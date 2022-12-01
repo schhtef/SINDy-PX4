@@ -8,7 +8,7 @@
             "name": "(gdb) Test",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/tests/unit_tests",
+            "program": "${workspaceFolder}/build/test/SINDy_tests",
             "args":[],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
