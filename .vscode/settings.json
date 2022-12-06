@@ -75,7 +75,8 @@
         "numbers": "cpp",
         "semaphore": "cpp",
         "stop_token": "cpp",
-        "cfenv": "cpp"
+        "cfenv": "cpp",
+        "regex": "cpp"
     },
     "cmake.configureOnOpen": false,
     "cmake.sourceDirectory": "${workspaceFolder}/src"

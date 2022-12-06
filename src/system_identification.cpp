@@ -204,8 +204,8 @@ SID::STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, flo
 			coefficient_indexes.shed_rows(below_index); //Remove indexes which correspond to thresholded values
             loop_candidate_functions.shed_rows(below_index); //Remove indexes which correspond to thresholded values
 			arma::uvec above_index = threshold_vector(loop_coefficients, threshold, "above"); //Find indexes of coefficients which are higher than the threshold value
-            loop_coefficients = ridge_regression(candidate_functions.rows(above_index), state, lambda); //Regress again on thresholded candidate functions
-            //Check if coefficient vector has changed in size since last iteration
+            loop_coefficients = ridge_regression(loop_candidate_functions, state, lambda); //Regress again on thresholded candidate functions
+			//Check if coefficient vector has changed in size since last iteration
 			if(coefficientSize == loop_coefficients.size())
 			{
 				converged = true; //If thresholding hasn't shrunk the coefficient vector, we have converged
@@ -216,7 +216,7 @@ SID::STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, flo
 
 		if(loop_coefficients.size() == 0)
 		{
-			fprintf(stderr, "Thresholding parameter set too low and removed all coefficients in state %d\n", i);
+			fprintf(stderr, "Thresholding parameter set too high and removed all coefficients in state %d\n", i);
 			coefficients.col(i).zeros(); //Set all coefficients to zero and don't attempt to match indexes
 			break;
 		}
@@ -232,6 +232,34 @@ SID::STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, flo
 		coefficients.col(i) = state_coefficients; //Solution for current state
 	}
 	return coefficients;
+}
+
+// Compute 2nd order candidate functions given that states are rows, samples are columns
+// Overloaded function allows you to just pass in a plain arma matrix
+arma::mat SID::
+compute_candidate_functions(arma::mat states)
+{
+	int num_samples = states.n_cols;
+	arma::rowvec bias = arma::ones<arma::rowvec>(num_samples);
+	states = arma::join_cols(bias, states);
+	int num_features = (states.n_rows)*(states.n_rows+1)/2;
+	int candidate_index = 0; //Index to keep track of insertion into candidate functions
+	arma::mat candidate_functions(num_features, num_samples);
+	//Compute second order combinations for each column
+	for(int i = 0; i <states.n_cols; i++)
+	{
+		//For each state, multiply by all others
+		for(int j = 0; j < states.n_rows; j++)
+		{
+			for(int k = j; k < states.n_rows; k++)
+			{
+				candidate_functions(candidate_index,i) = states(j,i)*states(k,i);
+				candidate_index++;
+			}
+		}
+		candidate_index = 0;
+	}
+	return candidate_functions;
 }
 
 arma::mat SID::

@@ -119,6 +119,7 @@ Vehicle_States linear_interpolate(Data_Buffer data, int sample_rate)
 	
 	Vehicle_States state_buffer;
 
+	state_buffer.time_boot_ms = time_ms;
 	state_buffer.p = p_interp;
 	state_buffer.q = q_interp;
 	state_buffer.r = r_interp;

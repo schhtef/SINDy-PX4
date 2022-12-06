@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10.2)
 project(SINDy_offboard)
 
 option(SIL_BUILD_TEST "Build the test suite" ON)
-option(SIL_BUILD "Build the test suite" ON)
+option(SIL_BUILD "Build the application" OFF)
 
 include(CTest)
 

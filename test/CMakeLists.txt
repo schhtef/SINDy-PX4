@@ -12,11 +12,14 @@ FetchContent_MakeAvailable(Catch2)
 find_package(Armadillo REQUIRED)
 include_directories(${ARMADILLO_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/src)
+include_directories(${PROJECT_SOURCE_DIR}/lib)
 
 add_executable(SINDy_tests
     tests.cpp
     ${PROJECT_SOURCE_DIR}/src/regression.cpp
     ${PROJECT_SOURCE_DIR}/src/system_identification.cpp
+    ${PROJECT_SOURCE_DIR}/src/buffer.cpp
+    ${PROJECT_SOURCE_DIR}/src/interpolate.cpp
 )
 
 #Link the required libraries, including the Catch2 with Main library
@@ -25,7 +28,6 @@ target_link_libraries(SINDy_tests
     PRIVATE
     Catch2::Catch2WithMain
     armadillo
-    MAVSDK::mavsdk
     pthread
 )
 

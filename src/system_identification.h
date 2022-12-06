@@ -37,13 +37,6 @@ private:
     bool time_to_exit = false;
     std::thread compute_thread;
 
-    arma::uvec threshold_vector(arma::vec vector, float threshold, string mode);
-    arma::mat compute_candidate_functions(Vehicle_States states);
-    arma::mat STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float lambda);
-    arma::rowvec threshold(arma::vec coefficients, arma::mat candidate_functions, float threshold);
-    arma::mat get_derivatives(Vehicle_States states);
-    void log_coeff(arma::mat matrix, string filename);
-
 public:
     SID();
     SID(Buffer *input_buffer_);
@@ -53,6 +46,13 @@ public:
     void start();
     void handle_quit(int sig);
     void sindy_compute();
+    arma::uvec threshold_vector(arma::vec vector, float threshold, string mode);
+    arma::mat compute_candidate_functions(Vehicle_States states);
+    arma::mat compute_candidate_functions(arma::mat states);
+    arma::mat STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float lambda);
+    arma::rowvec threshold(arma::vec coefficients, arma::mat candidate_functions, float threshold);
+    arma::mat get_derivatives(Vehicle_States states);
+    void log_coeff(arma::mat matrix, string filename);
 
     bool compute_status;
     std::atomic<bool> armed;
