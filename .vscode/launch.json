@@ -33,7 +33,7 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/SINDy_offboard",
+            "program": "${workspaceFolder}/build/src/SINDy_offboard",
             "args": ["-d",
             "udp://:14540",
             "-l",

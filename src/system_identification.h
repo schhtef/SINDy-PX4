@@ -57,8 +57,8 @@ public:
     bool compute_status;
     std::atomic<bool> armed;
 
-    string logfile_directory = "../logs";
-    int flight_number = 0; //current flight number used for generating a filename
+    string logfile_directory;
+    int flight_number; //current flight number used for generating a filename
     float STLSQ_threshold; //STLSQ thresholding parameter
     float lambda; //Ridge regression parameter
 };

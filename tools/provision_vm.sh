@@ -38,11 +38,14 @@ sudo apt install libarmadillo-dev
 #Install boost, needed for gazebo
 sudo apt-get install libboost-all-dev
 
-#Install boost, needed for gazebo
+#Install gazebo, needed for sitl testing
 sudo apt-get install libgazebo-dev
 
 #Install opencv, needed for gazebo
 sudo apt-get install libopencv-dev
+
+#Install raspberry pi compilation toolchain
+sudo apt-get install gcc-arm-linux-gnueabihf
 
 #Install cmake
 sudo apt install cmake

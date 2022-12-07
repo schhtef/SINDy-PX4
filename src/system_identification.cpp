@@ -31,6 +31,8 @@ SID(Buffer *input_buffer_)
     input_buffer = input_buffer_;
 	STLSQ_threshold = 0.01;
 	lambda = 0.5;
+	logfile_directory = "../logs/";
+	flight_number = 0;
 }
 
 SID::
@@ -50,7 +52,8 @@ sindy_compute()
     compute_status = true;
 	arma::running_stat<double> stats;
     while ( ! time_to_exit )
-	{ 
+	{
+		arma::cube logged_coefficients; 
 		auto t1 = std::chrono::high_resolution_clock::now();
         Data_Buffer data = input_buffer->clear();
 		auto t2 = std::chrono::high_resolution_clock::now();
@@ -92,7 +95,8 @@ sindy_compute()
 		if(armed)
 		{
 			//log_buffer_to_csv(interpolated_telemetry, filename);
-			//log_coeff(coefficients, logfile_directory + "Flight Number: " + to_string(flight_number) + ".csv");
+			log_coeff(coefficients, logfile_directory + "Flight Number: " + to_string(flight_number) + ".csv");
+			//coefficients.save(arma::hdf5_name(logfile_directory + "Flight Number: " + to_string(flight_number)+".hdf5", "coefficients", arma::hdf5_opts::append));
 		}
 	}
 	compute_status = false;

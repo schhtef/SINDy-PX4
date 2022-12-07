@@ -34,7 +34,7 @@ int main(int argc, char **argv);
 int setup(int argc, char **argv);
 //Runtime command handling
 void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &telemetry, SID &SINDy, Buffer &input_buffer, std::string logfile_directory);
-void parse_commandline(int argc, char **argv, string &autopilot_path, string &logfile_directory, int &buffer_length, string &buffer_mode);
+void parse_commandline(int argc, char **argv, string &autopilot_path, string &logfile_directory, int &buffer_length, string &buffer_mode, float &stlsq_threshold, float &ridge_regression_penalty);
 //Interrupt handling
 SID *SINDy_quit;
 int system_state = GROUND_IDLE_STATE;

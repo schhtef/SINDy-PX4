@@ -17,9 +17,11 @@ setup (int argc, char **argv)
 	string logfile_directory = "../logs/";
 	string buffer_mode = "length";
 	int buffer_length = 100;
+	float ridge_regression_penalty = 0.1;
+	float stlsq_threshold = 0.1;
 
 	// Parse command line arguments
-	parse_commandline(argc, argv, autopilot_path, logfile_directory, buffer_length, buffer_mode);
+	parse_commandline(argc, argv, autopilot_path, logfile_directory, buffer_length, buffer_mode, ridge_regression_penalty, stlsq_threshold);
 	
 	using namespace mavsdk;
 
@@ -181,7 +183,7 @@ void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &tele
 // ------------------------------------------------------------------------------
 //   Parse Command Line
 // ------------------------------------------------------------------------------
-void parse_commandline(int argc, char **argv, string &autopilot_path, string &logfile_directory, int &buffer_length, string &buffer_mode)
+void parse_commandline(int argc, char **argv, string &autopilot_path, string &logfile_directory, int &buffer_length, string &buffer_mode, float &stlsq_threshold, float &ridge_regression_penalty)
 {
 
 	// string for command line usage
@@ -236,6 +238,28 @@ void parse_commandline(int argc, char **argv, string &autopilot_path, string &lo
 			if (argc > i + 1) {
 				i++;
 				buffer_mode = (argv[i]);
+			} else {
+				//std::cout << commandline_usage;
+				throw EXIT_FAILURE;
+			}
+		}
+
+		// STLSQ thresholding parameter
+		if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--threshold") == 0) {
+			if (argc > i + 1) {
+				i++;
+				stlsq_threshold = atoi(argv[i]);
+			} else {
+				//std::cout << commandline_usage;
+				throw EXIT_FAILURE;
+			}
+		}
+
+		// ridge regression penalty
+		if (strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--lambda") == 0) {
+			if (argc > i + 1) {
+				i++;
+				ridge_regression_penalty = atoi(argv[i]);
 			} else {
 				//std::cout << commandline_usage;
 				throw EXIT_FAILURE;
