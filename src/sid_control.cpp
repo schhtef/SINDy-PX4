@@ -23,6 +23,9 @@ setup (int argc, char **argv)
 	// Parse command line arguments
 	parse_commandline(argc, argv, autopilot_path, logfile_directory, buffer_length, buffer_mode, ridge_regression_penalty, stlsq_threshold);
 	
+	// set a base time at which the telemetry items are timestamped
+	std::chrono::_V2::system_clock::time_point program_epoch = std::chrono::high_resolution_clock::now();
+
 	using namespace mavsdk;
 
 	// Instantiate MAVSDK Object
@@ -61,7 +64,7 @@ setup (int argc, char **argv)
 	 * This object takes data from the input buffer and implements the SINDy algorithm on it
 	 *
 	 */
-	SID SINDy(&input_buffer);
+	SID SINDy(&input_buffer, program_epoch, stlsq_threshold, ridge_regression_penalty);
 
 	/*
 	 * Setup interrupt signal handler
@@ -75,17 +78,9 @@ setup (int argc, char **argv)
 	SINDy_quit = &SINDy;
 	signal(SIGINT,quit_handler);
 
-	/*
-	 * Start the system identification thread
-	 */
-	SINDy.start();
-
 	// instantiate telemetry object
 	
 	Telemetry telemetry = Telemetry{system};
-
-	// set a base time at which the telemetry items are timestamped
-	auto program_epoch = std::chrono::high_resolution_clock::now();
 
 	// Subscribe to telemetry sources, inserting into the buffer on every new telemetry item
 	// Each subscription dispatches a thread which listens for a new item, calling the lambda function when one is received
@@ -142,9 +137,10 @@ void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &tele
 				if(telemetry.armed())
 				{
 					system_state = FLIGHT_LOG_STATE;
+					SINDy.logfile_directory = logfile_directory;
 					SINDy.flight_number++;
+					SINDy.start();
 					printf("Autopilot armed. Starting system identification for flight number %d\n", SINDy.flight_number);
-					SINDy.armed = true;
 				}
 			break;
 
@@ -154,7 +150,7 @@ void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &tele
 				{
 					system_state = GROUND_IDLE_STATE;
 					printf("Autopilot disarmed. Stopped logging\n");
-					SINDy.armed = false;
+					SINDy.stop();
 				}
 			break;
 

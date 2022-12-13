@@ -23,6 +23,7 @@
 #include <chrono>
 #include <armadillo>
 #include <thread>
+#include <array>
 
 
 
@@ -36,10 +37,11 @@ private:
     Buffer *input_buffer;
     bool time_to_exit = false;
     std::thread compute_thread;
+    std::chrono::_V2::system_clock::time_point epoch;
 
 public:
     SID();
-    SID(Buffer *input_buffer_);
+    SID(Buffer *input_buffer_, std::chrono::_V2::system_clock::time_point program_epoch, float stlsq_threshold, float ridge_regression_penalty);
     ~SID();
 
     void stop();
@@ -52,7 +54,8 @@ public:
     arma::mat STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float lambda);
     arma::rowvec threshold(arma::vec coefficients, arma::mat candidate_functions, float threshold);
     arma::mat get_derivatives(Vehicle_States states);
-    void log_coeff(arma::mat matrix, string filename);
+    void log_coeff(arma::mat matrix, string filename, std::chrono::microseconds sample_time);
+    void initialize_logfile(string filename);
 
     bool compute_status;
     std::atomic<bool> armed;

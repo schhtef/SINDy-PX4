@@ -26,13 +26,14 @@ SID()
 }
 
 SID::
-SID(Buffer *input_buffer_)
+SID(Buffer *input_buffer_, std::chrono::_V2::system_clock::time_point program_epoch, float stlsq_threshold, float ridge_regression_penalty)
 {
     input_buffer = input_buffer_;
-	STLSQ_threshold = 0.01;
-	lambda = 0.5;
+	STLSQ_threshold = stlsq_threshold;
+	lambda = ridge_regression_penalty;
 	logfile_directory = "../logs/";
 	flight_number = 0;
+	epoch = program_epoch;
 }
 
 SID::
@@ -51,9 +52,9 @@ sindy_compute()
 {
     compute_status = true;
 	arma::running_stat<double> stats;
+	initialize_logfile(logfile_directory + "Flight Number: " + to_string(flight_number) + ".csv"); //Write header to coefficient logfile
     while ( ! time_to_exit )
 	{
-		arma::cube logged_coefficients; 
 		auto t1 = std::chrono::high_resolution_clock::now();
         Data_Buffer data = input_buffer->clear();
 		auto t2 = std::chrono::high_resolution_clock::now();
@@ -76,15 +77,17 @@ sindy_compute()
 		auto derivative_time = std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4);
 		auto SINDy_time = std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5);
 
+		std::chrono::microseconds coefficient_sample_time = std::chrono::duration_cast<std::chrono::microseconds>(t6 - epoch);
+
 		stats(SINDy_time.count());
 		//std::cout << "Buffer Clear: " << clear_buffer_time.count() << "ms\n";
 		//std::cout << "Interpolation: " << interpolation_time.count() << "us\n";
 		//std::cout << "Candidate Functions: " << candidate_computation_time.count() << "us\n";
 		//std::cout << "Derivative Parse: " << derivative_time.count() << "us\n";
-		std::cout << "SINDy: " << SINDy_time.count() << "us\n";
-		std::cout << "SINDy Average: " << stats.mean() << "us\n";
-		std::cout << "SINDy: " << stats.stddev() << "us\n";
-		std::cout << "Buffer Size: " << states.num_samples << " samples\n";
+		//std::cout << "SINDy: " << SINDy_time.count() << "us\n";
+		//std::cout << "SINDy Average: " << stats.mean() << "us\n";
+		//std::cout << "SINDy: " << stats.stddev() << "us\n";
+		//std::cout << "Buffer Size: " << states.num_samples << " samples\n";
 
 		//coefficients.print();
 
@@ -92,47 +95,63 @@ sindy_compute()
 		
 		// might cause a race condition where the SINDy thread checks disarmed just before the main thread
 		// sets the disarmed flag. Worst case scenario the SINDy thread logs one more buffer
-		if(armed)
-		{
-			//log_buffer_to_csv(interpolated_telemetry, filename);
-			log_coeff(coefficients, logfile_directory + "Flight Number: " + to_string(flight_number) + ".csv");
-			//coefficients.save(arma::hdf5_name(logfile_directory + "Flight Number: " + to_string(flight_number)+".hdf5", "coefficients", arma::hdf5_opts::append));
-		}
+
+		//log_buffer_to_csv(interpolated_telemetry, filename);
+		log_coeff(coefficients, logfile_directory + "Flight Number: " + to_string(flight_number) + ".csv", coefficient_sample_time);
+		//coefficients.save(arma::hdf5_name(logfile_directory + "Flight Number: " + to_string(flight_number)+".hdf5", "coefficients", arma::hdf5_opts::append));
 	}
 	compute_status = false;
 	return;
 }
 
 void SID::
-log_coeff(arma::mat matrix, string filename)
+initialize_logfile(string filename)
 {
 	std::ofstream myfile;
-    myfile.open (filename);
-	myfile << ",p, q, r, u, v, w" << endl;
-	std::vector<string> candidates = {"1", "x", "y", "z", "psi", "theta", "phi", "u0", "u1", "u2", "u3",
-									"x^2", "xy", "xz", "xpsi", "xtheta", "xphi", "xu0", "xu1", "xu2", "xu3",
-									"y^2", "yz", "ypsi", "ytheta","yphi", "yu0", "yu1", "yu2", "yu3",
-									"z^2", "zpsi", "ztheta", "zphi","zu0", "zu1", "zu2", "zu3",
-									"psi^2","psitheta",	"psiphi", "psiu0", "psiu1", "psiu2", "psiu3", 							
-									"theta^2", "thetaphi", "thetau0", "thetau1", "thetau2", "thetau3",
-									"phi^2", "phiu0", "phiu1", "phiu2", "phiu3", 
-									"u0^2", "u0u1", "u0u2", "u0u3"
-									"u1^2", "u1u2", "u1u3",
-									"u2^2", "u2u3",
-									"u3^2"						
-									};
+    myfile.open (filename, ios_base::trunc);
+	//std::array<string, 11> first_order_candidates = {"1", "x", "y", "z", "psi", "theta", "phi", "u0", "u1", "u2", "u3"};
+	std::vector<string> second_order_candidates = {"1", "x", "y", "z", "psi", "theta", "phi", "u0", "u1", "u2", "u3",
+								"x^2", "xy", "xz", "xpsi", "xtheta", "xphi", "xu0", "xu1", "xu2", "xu3",
+								"y^2", "yz", "ypsi", "ytheta","yphi", "yu0", "yu1", "yu2", "yu3",
+								"z^2", "zpsi", "ztheta", "zphi","zu0", "zu1", "zu2", "zu3",
+								"psi^2","psitheta",	"psiphi", "psiu0", "psiu1", "psiu2", "psiu3", 							
+								"theta^2", "thetaphi", "thetau0", "thetau1", "thetau2", "thetau3",
+								"phi^2", "phiu0", "phiu1", "phiu2", "phiu3", 
+								"u0^2", "u0u1", "u0u2", "u0u3",
+								"u1^2", "u1u2", "u1u3",
+								"u2^2", "u2u3",
+								"u3^2"						
+								}; //would like to generate this programmatically at some point
 	
-	assert(candidates.size() == matrix.n_rows);
+	std::vector<string> states = {"p", "q", "r", "u", "v", "w"};
 
-	for(int i = 0; i < matrix.n_rows; i++)
+	myfile << "Time (us)" << ",";
+	//Generate header and write to file
+	for(auto candidate_iterator = second_order_candidates.begin(); candidate_iterator != second_order_candidates.end(); ++candidate_iterator)
 	{
-		myfile << candidates[i] << ",";
-		for(int j = 0; j < matrix.n_cols; j++)
+		for(auto state_iterator = states.begin(); state_iterator != states.end(); ++state_iterator)
 		{
-			myfile << matrix(i,j) << ",";
+			myfile << *candidate_iterator << "-" << *state_iterator << ",";
 		}
-		myfile << "\n";
 	}
+	myfile << "\n";
+	myfile.close();
+}
+
+void SID::
+log_coeff(arma::mat matrix, string filename, std::chrono::microseconds sample_time)
+{
+	std::ofstream myfile;
+    myfile.open (filename, ios_base::app);
+	arma::rowvec vectorized_matrix = vectorise(matrix, 1); //row-wise vectorization of the coefficient matrix for writing to csv
+	
+	arma::rowvec::iterator coefficient_iterator = vectorized_matrix.begin();
+	myfile << sample_time.count() << ",";
+	for(; coefficient_iterator != vectorized_matrix.end(); ++coefficient_iterator)
+	{
+		myfile << (*coefficient_iterator) << ",";
+	}
+	myfile << "\n";
 	myfile.close();
 }
 
@@ -220,7 +239,7 @@ SID::STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, flo
 
 		if(loop_coefficients.size() == 0)
 		{
-			fprintf(stderr, "Thresholding parameter set too high and removed all coefficients in state %d\n", i);
+			//fprintf(stderr, "Thresholding parameter set too high and removed all coefficients in state %d\n", i);
 			coefficients.col(i).zeros(); //Set all coefficients to zero and don't attempt to match indexes
 			break;
 		}
@@ -239,7 +258,8 @@ SID::STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, flo
 }
 
 // Compute 2nd order candidate functions given that states are rows, samples are columns
-// Overloaded function allows you to just pass in a plain arma matrix
+// Overloaded function allows you to just pass in a plain arma matrix. The actual candidate function computation
+// Is identical to the function which takes a Vehicle_States struct, without the repackaging into matrices
 arma::mat SID::
 compute_candidate_functions(arma::mat states)
 {
