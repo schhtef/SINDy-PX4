@@ -1,4 +1,9 @@
 cmake_minimum_required(VERSION 3.10.2)
+
+if()
+    set(CMAKE_TOOLCHAIN_FILE arm-linux-gnuabihf.cmake)
+endif()
+
 project(SINDy_offboard)
 
 option(SIL_BUILD_TEST "Build the test suite" OFF)
