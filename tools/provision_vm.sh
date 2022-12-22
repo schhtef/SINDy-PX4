@@ -49,6 +49,9 @@ sudo apt-get install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 #Install openblas for cross compiling armadillo
 wget https://github.com/xianyi/OpenBLAS/archive/refs/tags/v0.3.21.zip
 
+#Install the fortran compiler for 64bit arm (to compile LAPACK)
+sudo apt install gfortran-aarch64-linux-gnu
+
 #Install cmake
 sudo apt install cmake
 
