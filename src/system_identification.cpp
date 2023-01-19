@@ -84,12 +84,12 @@ sindy_compute()
 		//std::cout << "Interpolation: " << interpolation_time.count() << "us\n";
 		//std::cout << "Candidate Functions: " << candidate_computation_time.count() << "us\n";
 		//std::cout << "Derivative Parse: " << derivative_time.count() << "us\n";
-		//std::cout << "SINDy: " << SINDy_time.count() << "us\n";
+		std::cout << "SINDy: " << SINDy_time.count() << "us\n";
 		//std::cout << "SINDy Average: " << stats.mean() << "us\n";
 		//std::cout << "SINDy: " << stats.stddev() << "us\n";
 		//std::cout << "Buffer Size: " << states.num_samples << " samples\n";
 
-		//coefficients.print();
+		coefficients.print();
 
 		//Log Results
 		
@@ -97,7 +97,7 @@ sindy_compute()
 		// sets the disarmed flag. Worst case scenario the SINDy thread logs one more buffer
 
 		//log_buffer_to_csv(interpolated_telemetry, filename);
-		log_coeff(coefficients, logfile_directory + "Flight Number: " + to_string(flight_number) + ".csv", coefficient_sample_time);
+		//log_coeff(coefficients, logfile_directory + "Flight Number: " + to_string(flight_number) + ".csv", coefficient_sample_time);
 		//coefficients.save(arma::hdf5_name(logfile_directory + "Flight Number: " + to_string(flight_number)+".hdf5", "coefficients", arma::hdf5_opts::append));
 	}
 	compute_status = false;
