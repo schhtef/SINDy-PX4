@@ -49,7 +49,7 @@ setup (int argc, char **argv)
 	/*
 	 * Instantiate buffer objects
 	 *
-	 * This object handles the synchronization between the producer (autopilot interface)
+	 * This object handles the synchronization between the producer (px4 autopilot)
 	 * and consumer (SINDy). It creates a buffer for the desired data of length BUFFER_LENGTH.
 	 * The buffer implements mutexing and condition variables which allows the separate
 	 * Producer and Consumer threads to access it without data races. Each buffer instance is 
@@ -81,6 +81,32 @@ setup (int argc, char **argv)
 	// instantiate telemetry object
 	
 	Telemetry telemetry = Telemetry{system};
+	auto info = Info{system};
+
+	const Info::Identification &systemInformation = info.get_identification().second;
+	const Info::Product &systemProduct = info.get_product().second;
+	const Info::Version &systemVersion = info.get_version().second;
+
+	std::cout << " Hardware uid: " << systemInformation.hardware_uid<<'\n';
+
+	// Print out the vehicle version information.
+	std::cout << "  flight_sw_major: " << systemVersion.flight_sw_major<< '\n'
+			<< "  flight_sw_minor: " << systemVersion.flight_sw_minor<< '\n'
+			<< "  flight_sw_patch: " << systemVersion.flight_sw_patch<< '\n'
+			<< "  flight_sw_vendor_major: " << systemVersion.flight_sw_vendor_major<< '\n'
+			<< "  flight_sw_vendor_minor: " << systemVersion.flight_sw_vendor_minor<< '\n'
+			<< "  flight_sw_vendor_patch: " << systemVersion.flight_sw_vendor_patch<< '\n'
+			<< "  flight_sw_git_hash: " << systemVersion.flight_sw_git_hash<< '\n'
+			<< "  os_sw_major: " << systemVersion.os_sw_major<< '\n'
+			<< "  os_sw_minor: " << systemVersion.os_sw_minor<< '\n'
+			<< "  os_sw_patch: " << systemVersion.os_sw_patch<< '\n'
+			<< "  os_sw_git_hash: " << systemVersion.os_sw_git_hash<< '\n';
+
+	// Print out the vehicle product information.
+	std::cout << "  vendor_id: " << systemProduct.vendor_id<< '\n'
+			<< "  vendor_name: " << systemProduct.vendor_name<< '\n'
+			<< "  product_id: " << systemProduct.product_id<< '\n'
+			<< "  product_name: " << systemProduct.product_id<< '\n';
 
 	// Subscribe to telemetry sources, inserting into the buffer on every new telemetry item
 	// Each subscription dispatches a thread which listens for a new item, calling the lambda function when one is received
@@ -196,7 +222,7 @@ void parse_commandline(int argc, char **argv, string &autopilot_path, string &lo
 			throw EXIT_FAILURE;
 		}
 
-		// logfile
+		// devicepath
 		if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--devpath") == 0) {
 			if (argc > i + 1) {
 				i++;
