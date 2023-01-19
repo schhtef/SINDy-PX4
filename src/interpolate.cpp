@@ -12,6 +12,9 @@ Vehicle_States linear_interpolate(Data_Buffer data, int sample_rate)
 {
 	//Perform the coordinate conversions to obtain the desired states
 
+	//Ensure all telem sources have been arriving 
+	assert(data.find_min_length() > 0);
+
 	//Euler angles
 	arma::rowvec psi = arma::conv_to<arma::rowvec>::from(data.roll);
 	arma::rowvec theta = arma::conv_to<arma::rowvec>::from(data.pitch);

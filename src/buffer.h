@@ -97,7 +97,30 @@ struct Data_Buffer {
         {
             max_length = position_time_boot_ms.size();
         }
+        if(actuator_output_ms.size() > max_length)
+        {
+            max_length = actuator_output_ms.size();
+        }
         return max_length;
+    }
+
+    int find_min_length()
+    {
+        int min_length = attitude_time_boot_ms.size();
+
+        if(angular_velocity_time_boot_ms.size() < min_length)
+        {
+            min_length = angular_velocity_time_boot_ms.size();
+        }
+        if(position_time_boot_ms.size() < min_length)
+        {
+            min_length = position_time_boot_ms.size();
+        }
+        if(actuator_output_ms.size() < min_length)
+        {
+            min_length = actuator_output_ms.size();
+        }
+        return min_length;
     }
 };
 
