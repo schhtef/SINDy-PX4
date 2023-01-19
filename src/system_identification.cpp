@@ -50,6 +50,7 @@ start()
 void SID::
 sindy_compute()
 {
+	std::cout << "Performing sindy\n";
     compute_status = true;
 	arma::running_stat<double> stats;
 	initialize_logfile(logfile_directory + "Flight Number: " + to_string(flight_number) + ".csv"); //Write header to coefficient logfile
