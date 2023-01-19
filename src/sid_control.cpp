@@ -88,6 +88,7 @@ setup (int argc, char **argv)
 	const Info::Version &systemVersion = info.get_version().second;
 
 	std::cout << " Hardware uid: " << systemInformation.hardware_uid<<'\n';
+	std::cout << " Legacy Hardware uid: " << systemInformation.legacy_uid<<'\n';
 
 	// Print out the vehicle version information.
 	std::cout << "  flight_sw_major: " << systemVersion.flight_sw_major<< '\n'
