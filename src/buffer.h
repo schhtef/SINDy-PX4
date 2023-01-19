@@ -24,6 +24,7 @@
 #include <chrono>
 #include <mavsdk/mavsdk.h> // general mavlink header
 #include <mavsdk/plugins/telemetry/telemetry.h> // telemetry plugin
+#include <iostream>
 
 using namespace std;
 
