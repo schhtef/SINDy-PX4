@@ -179,7 +179,7 @@ void Buffer::insert(mavsdk::Telemetry::EulerAngle message, uint64_t timestamp)
 	unique_lock.unlock();
 }
 
-// Insert an angular attitude message into the buffer
+// Insert an ActuatorControlTarget into the buffer
 void Buffer::insert(mavsdk::Telemetry::ActuatorControlTarget actuator_message, uint64_t timestamp)
 {
 	// thread safe insertion into the buffer, ensures that no insertion occurs when buffer is full

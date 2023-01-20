@@ -58,20 +58,20 @@ sindy_compute()
 	{
 		auto t1 = std::chrono::high_resolution_clock::now();
         Data_Buffer data = input_buffer->clear();
-		std::cout << "Cleared Buffer\n";
+		//std::cout << "Cleared Buffer\n";
 		auto t2 = std::chrono::high_resolution_clock::now();
 		Vehicle_States states = linear_interpolate(data, 200); // Resample input buffer and compute desired states
 		auto t3 = std::chrono::high_resolution_clock::now();
-		std::cout << "Interpolated Buffer\n";
+		//std::cout << "Interpolated Buffer\n";
 		arma::mat candidate_functions = compute_candidate_functions(states); //Generate Candidate Function
 		auto t4 = std::chrono::high_resolution_clock::now();
-		std::cout << "Computed Candidates\n";
+		//std::cout << "Computed Candidates\n";
 		arma::mat derivatives = get_derivatives(states); //Get state derivatives for SINDy
 		auto t5 = std::chrono::high_resolution_clock::now();
-		std::cout << "Computed Derivatives\n";
+		//std::cout << "Computed Derivatives\n";
 		arma::mat coefficients = STLSQ(derivatives, candidate_functions, STLSQ_threshold, lambda); //Run STLSQ
 		auto t6 = std::chrono::high_resolution_clock::now();
-		std::cout << "Completed STLSQ\n";
+		//std::cout << "Completed STLSQ\n";
 
 		assert(states.num_samples == candidate_functions.n_cols); // Check that number of samples are preserved after computing candidate functions
 		assert(candidate_functions.n_cols == derivatives.n_cols); // Check that number of samples in candidate functions and derivatives are equal
@@ -90,7 +90,7 @@ sindy_compute()
 		//std::cout << "Interpolation: " << interpolation_time.count() << "us\n";
 		//std::cout << "Candidate Functions: " << candidate_computation_time.count() << "us\n";
 		//std::cout << "Derivative Parse: " << derivative_time.count() << "us\n";
-		std::cout << "SINDy: " << SINDy_time.count() << "us\n";
+		//std::cout << "SINDy: " << SINDy_time.count() << "us\n";
 		//std::cout << "SINDy Average: " << stats.mean() << "us\n";
 		//std::cout << "SINDy: " << stats.stddev() << "us\n";
 		//std::cout << "Buffer Size: " << states.num_samples << " samples\n";
@@ -103,7 +103,7 @@ sindy_compute()
 		// sets the disarmed flag. Worst case scenario the SINDy thread logs one more buffer
 
 		//log_buffer_to_csv(interpolated_telemetry, filename);
-		//log_coeff(coefficients, logfile_directory + "Flight Number: " + to_string(flight_number) + ".csv", coefficient_sample_time);
+		log_coeff(coefficients, logfile_directory + "Flight Number: " + to_string(flight_number) + ".csv", coefficient_sample_time);
 		//coefficients.save(arma::hdf5_name(logfile_directory + "Flight Number: " + to_string(flight_number)+".hdf5", "coefficients", arma::hdf5_opts::append));
 	}
 	compute_status = false;
