@@ -195,11 +195,6 @@ void Buffer::insert(mavsdk::Telemetry::ActuatorControlTarget actuator_message, u
 		return buffer_counter < buffer_length; 
 	});
 
-	std::cout << actuator_message.controls.at(0) << '\n';
-	std::cout << actuator_message.controls.at(1) << '\n';
-	std::cout << actuator_message.controls.at(2) << '\n';
-	std::cout << actuator_message.controls.at(3) << '\n';
-
 	buffer.actuator_output_ms.push_back(timestamp);
 	//Insert the first four actuator outputs into respective actuators
 	buffer.actuator0.push_back(actuator_message.controls.at(0));
