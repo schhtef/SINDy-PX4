@@ -133,6 +133,7 @@ initialize_logfile(string filename)
 
 	myfile << "Time (us)" << ",";
 	//Generate header and write to file
+	//For each candidate, create a column which is the candidate multiplied by a state variable
 	for(auto candidate_iterator = second_order_candidates.begin(); candidate_iterator != second_order_candidates.end(); ++candidate_iterator)
 	{
 		for(auto state_iterator = states.begin(); state_iterator != states.end(); ++state_iterator)
@@ -368,7 +369,7 @@ stop()
 	time_to_exit = true;
 
 	// wait for exit
-	compute_thread.join();
+	//compute_thread.join();
 
 	// now the read and write threads are closed
 	printf("\n");
