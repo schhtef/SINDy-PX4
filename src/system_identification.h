@@ -48,19 +48,19 @@ public:
     void start();
     void handle_quit(int sig);
     void sindy_compute();
-    arma::uvec threshold_vector(arma::vec vector, float threshold, string mode);
+    arma::uvec threshold_vector(arma::vec vector, float threshold, std::string mode);
     arma::mat compute_candidate_functions(Vehicle_States states);
     arma::mat compute_candidate_functions(arma::mat states);
     arma::mat STLSQ(arma::mat states, arma::mat candidate_functions, float threshold, float lambda);
     arma::rowvec threshold(arma::vec coefficients, arma::mat candidate_functions, float threshold);
     arma::mat get_derivatives(Vehicle_States states);
-    void log_coeff(arma::mat matrix, string filename, std::chrono::microseconds sample_time);
-    void initialize_logfile(string filename);
+    void log_coeff(arma::mat matrix, std::string filename, std::chrono::microseconds sample_time);
+    void initialize_logfile(std::string filename);
 
     bool compute_status;
     std::atomic<bool> armed;
 
-    string logfile_directory;
+    std::string logfile_directory;
     int flight_number; //current flight number used for generating a filename
     float STLSQ_threshold; //STLSQ thresholding parameter
     float lambda; //Ridge regression parameter

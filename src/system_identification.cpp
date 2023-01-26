@@ -50,7 +50,8 @@ start()
 void SID::
 sindy_compute()
 {
-	std::cout << "Performing sindy\n";
+	using namespace std;
+	cout << "Performing sindy\n";
     compute_status = true;
 	arma::running_stat<double> stats;
 	initialize_logfile(logfile_directory + "Flight Number: " + to_string(flight_number) + ".csv"); //Write header to coefficient logfile
@@ -111,12 +112,13 @@ sindy_compute()
 }
 
 void SID::
-initialize_logfile(string filename)
+initialize_logfile(std::string filename)
 {
-	std::ofstream myfile;
+	using namespace std;
+	ofstream myfile;
     myfile.open (filename, ios_base::trunc);
 	//std::array<string, 11> first_order_candidates = {"1", "x", "y", "z", "psi", "theta", "phi", "u0", "u1", "u2", "u3"};
-	std::vector<string> second_order_candidates = {"1", "x", "y", "z", "psi", "theta", "phi", "u0", "u1", "u2", "u3",
+	vector<string> second_order_candidates = {"1", "x", "y", "z", "psi", "theta", "phi", "u0", "u1", "u2", "u3",
 								"x^2", "xy", "xz", "xpsi", "xtheta", "xphi", "xu0", "xu1", "xu2", "xu3",
 								"y^2", "yz", "ypsi", "ytheta","yphi", "yu0", "yu1", "yu2", "yu3",
 								"z^2", "zpsi", "ztheta", "zphi","zu0", "zu1", "zu2", "zu3",
@@ -129,7 +131,7 @@ initialize_logfile(string filename)
 								"u3^2"						
 								}; //would like to generate this programmatically at some point
 	
-	std::vector<string> states = {"p", "q", "r", "u", "v", "w"};
+	vector<string> states = {"p", "q", "r", "u", "v", "w"};
 
 	myfile << "Time (us)" << ",";
 	//Generate header and write to file
@@ -146,9 +148,10 @@ initialize_logfile(string filename)
 }
 
 void SID::
-log_coeff(arma::mat matrix, string filename, std::chrono::microseconds sample_time)
+log_coeff(arma::mat matrix, std::string filename, std::chrono::microseconds sample_time)
 {
-	std::ofstream myfile;
+	using namespace std;
+	ofstream myfile;
     myfile.open (filename, ios_base::app);
 	arma::rowvec vectorized_matrix = vectorise(matrix, 1); //row-wise vectorization of the coefficient matrix for writing to csv
 	
@@ -164,7 +167,7 @@ log_coeff(arma::mat matrix, string filename, std::chrono::microseconds sample_ti
 
 // Returns indeces of vector which correspond to values which are above or below a threshold value
 arma::uvec SID::
-threshold_vector(arma::vec vector, float threshold, string mode)
+threshold_vector(arma::vec vector, float threshold, std::string mode)
 {
     std::vector<uint> index;
     if(mode == "below")

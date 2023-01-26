@@ -11,17 +11,17 @@
 int
 setup (int argc, char **argv)
 {
-
+	using namespace std;
 	// Set program defaults
 	string autopilot_path = "udp://:14540";
 	string logfile_directory = "../logs/";
-	string buffer_mode = "length";
+	buffer_mode mode = buffer_mode::length_mode;
 	int buffer_length = 100;
 	float ridge_regression_penalty = 0.1;
 	float stlsq_threshold = 0.1;
 
 	// Parse command line arguments
-	parse_commandline(argc, argv, autopilot_path, logfile_directory, buffer_length, buffer_mode, ridge_regression_penalty, stlsq_threshold);
+	parse_commandline(argc, argv, autopilot_path, logfile_directory, buffer_length, mode, ridge_regression_penalty, stlsq_threshold);
 	
 	// set a base time at which the telemetry items are timestamped
 	std::chrono::_V2::system_clock::time_point program_epoch = std::chrono::high_resolution_clock::now();
@@ -56,7 +56,7 @@ setup (int argc, char **argv)
 	 * associated with a Mavlink type which is passed into the SID
 	 *
 	 */
-	Buffer input_buffer(buffer_length, buffer_mode);
+	Buffer input_buffer(buffer_length, mode);
 	
 	/*
 	 * Instantiate a system identification object
@@ -206,11 +206,11 @@ void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &tele
 // ------------------------------------------------------------------------------
 //   Parse Command Line
 // ------------------------------------------------------------------------------
-void parse_commandline(int argc, char **argv, string &autopilot_path, string &logfile_directory, int &buffer_length, string &buffer_mode, float &stlsq_threshold, float &ridge_regression_penalty)
+void parse_commandline(int argc, char **argv, std::string &autopilot_path, std::string &logfile_directory, int &buffer_length, buffer_mode &mode, float &stlsq_threshold, float &ridge_regression_penalty)
 {
-
+	using namespace std;
 	// string for command line usage
-	std::string commandline_usage = "usage: SID_offboard -d <Device Path>\n udp://[host][:port]\ntcp://[host][:port]\n serial://[path][:baudrate]";
+	string commandline_usage = "usage: SID_offboard -d <Device Path>\n udp://[host][:port]\ntcp://[host][:port]\n serial://[path][:baudrate]";
 	commandline_usage += "-l <logfile directory>\n -b <buffer length>\n -m <buffer mode>\n time or length";
 	char *val;
 	// Read input arguments
@@ -260,7 +260,17 @@ void parse_commandline(int argc, char **argv, string &autopilot_path, string &lo
 		if (strcmp(argv[i], "-m") == 0 || strcmp(argv[i], "--mode") == 0) {
 			if (argc > i + 1) {
 				i++;
-				buffer_mode = (argv[i]);
+				string buffer_mode_string = (argv[i]);
+				if(buffer_mode_string=="length"){
+					mode = buffer_mode::length_mode;
+				}
+				else if(buffer_mode_string=="time"){
+					mode = buffer_mode::time_mode;
+				}
+				else {
+					std::cout << "Invalid argument, options are length or time\n";
+					throw EXIT_FAILURE;
+				}
 			} else {
 				//std::cout << commandline_usage;
 				throw EXIT_FAILURE;

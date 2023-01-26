@@ -26,10 +26,10 @@ Buffer()
 
 
 Buffer::
-Buffer(int buffer_length_, string buffer_mode_)
+Buffer(int buffer_length_, buffer_mode mode_)
 {
-	assert(buffer_mode_ == "time" || buffer_mode_ == "length");
-	buffer_mode = buffer_mode_;
+	//assert(buffer_mode == time || buffer_mode == length);
+	mode = mode_;
 	buffer_length = buffer_length_;
 	//Get time of construction to keep track of training time
 	auto now = std::chrono::high_resolution_clock::now();
@@ -70,12 +70,12 @@ void Buffer::insert(mavsdk::Telemetry::Odometry message, uint64_t timestamp)
 	buffer.z_m_s.push_back(message.velocity_body.z_m_s);
 
 
-	if(buffer_mode == "length")
+	if(mode == buffer_mode::length_mode)
 	{
 		// If one of the input buffers has reached the maximum length, notify that the buffer is full
 		buffer_counter = buffer.find_max_length();
 	}
-	else if(buffer_mode == "time")
+	else if(mode == buffer_mode::time_mode)
 	{
 		//Find current time in s
 		auto now = std::chrono::high_resolution_clock::now();
@@ -114,12 +114,12 @@ void Buffer::insert(mavsdk::Telemetry::AngularVelocityBody message, uint64_t tim
 	buffer.rollspeed.push_back(message.roll_rad_s);
 	buffer.yawspeed.push_back(message.yaw_rad_s);
 
-	if(buffer_mode == "length")
+	if(mode == buffer_mode::length_mode)
 	{
 		// If one of the input buffers has reached the maximum length, notify that the buffer is full
 		buffer_counter = buffer.find_max_length();
 	}
-	else if(buffer_mode == "time")
+	else if(mode == buffer_mode::time_mode)
 	{
 		//Find current time in s
 		auto now = std::chrono::high_resolution_clock::now();
@@ -157,12 +157,12 @@ void Buffer::insert(mavsdk::Telemetry::EulerAngle message, uint64_t timestamp)
 	buffer.pitch.push_back(message.pitch_deg);
 	buffer.yaw.push_back(message.yaw_deg);
 
-	if(buffer_mode == "length")
+	if(mode == buffer_mode::length_mode)
 	{
 		// If one of the input buffers has reached the maximum length, notify that the buffer is full
 		buffer_counter = buffer.find_max_length();
 	}
-	else if(buffer_mode == "time")
+	else if(mode == buffer_mode::time_mode)
 	{
 		//Find current time in s
 		auto now = std::chrono::high_resolution_clock::now();
@@ -202,12 +202,12 @@ void Buffer::insert(mavsdk::Telemetry::ActuatorControlTarget actuator_message, u
 	buffer.actuator2.push_back(actuator_message.controls.at(2));
 	buffer.actuator3.push_back(actuator_message.controls.at(3));
 
-	if(buffer_mode == "length")
+	if(mode == buffer_mode::length_mode)
 	{
 		// If one of the input buffers has reached the maximum length, notify that the buffer is full
 		buffer_counter = buffer.find_max_length();
 	}
-	else if(buffer_mode == "time")
+	else if(mode == buffer_mode::time_mode)
 	{
 		//Find current time in s
 		auto now = std::chrono::high_resolution_clock::now();
@@ -246,11 +246,11 @@ Buffer::clear()
 	
 	// Empty buffer
 	buffer.clear_buffers();
-	if(buffer_mode == "length")
+	if(mode == buffer_mode::length_mode)
 	{
 		buffer_counter = 0;
 	}
-	else if(buffer_mode == "time")
+	else if(mode == buffer_mode::time_mode)
 	{
 		//Set buffer counter to 0 and save clearing time
 		auto now = std::chrono::high_resolution_clock::now();

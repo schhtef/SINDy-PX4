@@ -26,8 +26,6 @@
 #include <mavsdk/plugins/telemetry/telemetry.h> // telemetry plugin
 #include <iostream>
 
-using namespace std;
-
 // ------------------------------------------------------------------------------
 //   Data structures
 // ------------------------------------------------------------------------------
@@ -125,11 +123,17 @@ struct Data_Buffer {
     }
 };
 
+// Enumerate the modes which the buffer may operate in
+enum buffer_mode {
+    time_mode,
+    length_mode
+};
+
 // ----------------------------------------------------------------------------------
 //   Buffer Class
 // ----------------------------------------------------------------------------------
 /*
- * Generic Buffer Class so that buffers of multiple mavlink datatypes can be used
+ * 
  *
  */
 class Buffer
@@ -137,7 +141,7 @@ class Buffer
     int buffer_length;
     int buffer_counter = 0;
     int clear_time;
-    string buffer_mode = "";
+    buffer_mode mode;
 
     Data_Buffer buffer;
     std::mutex mtx;
@@ -146,7 +150,7 @@ class Buffer
 
 public:
     Buffer();
-    Buffer(int buffer_length_, string buffer_mode);
+    Buffer(int buffer_length_, buffer_mode mode_);
     ~Buffer();
 
     void insert(mavsdk::Telemetry::Odometry, uint64_t timestamp);
