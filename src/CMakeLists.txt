@@ -5,6 +5,7 @@ add_executable(SINDy_offboard
     system_identification.cpp
     regression.cpp
     interpolate.cpp
+    logging.cpp
 )
 
 find_package(MAVSDK REQUIRED)

@@ -14,14 +14,18 @@ setup (int argc, char **argv)
 	using namespace std;
 	// Set program defaults
 	string autopilot_path = "udp://:14540";
-	string logfile_directory = "../logs/";
+	string coefficient_logfile_directory = "../logs/coefficients.csv";
+	string debug_logfile_path = "../logs/mavlink_debug_log.csv";
+	
 	buffer_mode mode = buffer_mode::length_mode;
 	int buffer_length = 100;
 	float ridge_regression_penalty = 0.1;
 	float stlsq_threshold = 0.1;
+	bool debug = false;
 
 	// Parse command line arguments
-	parse_commandline(argc, argv, autopilot_path, logfile_directory, buffer_length, mode, ridge_regression_penalty, stlsq_threshold);
+	parse_commandline(argc, argv, autopilot_path, coefficient_logfile_directory, buffer_length, mode, ridge_regression_penalty, 
+					stlsq_threshold, debug, debug_logfile_path);
 	
 	// set a base time at which the telemetry items are timestamped
 	std::chrono::_V2::system_clock::time_point program_epoch = std::chrono::high_resolution_clock::now();
@@ -64,7 +68,7 @@ setup (int argc, char **argv)
 	 * This object takes data from the input buffer and implements the SINDy algorithm on it
 	 *
 	 */
-	SID SINDy(&input_buffer, program_epoch, stlsq_threshold, ridge_regression_penalty);
+	SID SINDy(&input_buffer, program_epoch, stlsq_threshold, ridge_regression_penalty, coefficient_logfile_directory, debug);
 
 	/*
 	 * Setup interrupt signal handler
@@ -109,6 +113,19 @@ setup (int argc, char **argv)
 			<< "  product_id: " << systemProduct.product_id<< '\n'
 			<< "  product_name: " << systemProduct.product_id<< '\n';
 
+	// Subscribe to mavlink logs
+	mavsdk::log::subscribe([debug_logfile_path](mavsdk::log::Level level,   // message severity level
+							const std::string& message, // message text
+							const std::string& file,    // source file from which the message was sent
+							int line) {                 // line number in the source file
+	
+	// process the log message in a way you like
+	log_mavlink_info(level, message, debug_logfile_path);
+
+	// returning true from the callback disables printing the message to stdout
+	return level < mavsdk::log::Level::Warn;
+	});
+
 	// Subscribe to telemetry sources, inserting into the buffer on every new telemetry item
 	// Each subscription dispatches a thread which listens for a new item, calling the lambda function when one is received
 	telemetry.subscribe_attitude_euler([&input_buffer, program_epoch](Telemetry::EulerAngle attitude) {
@@ -136,7 +153,7 @@ setup (int argc, char **argv)
 	});
 	
 	// Run the main event loop
-	flight_loop(system, telemetry, SINDy, input_buffer, logfile_directory);
+	flight_loop(system, telemetry, SINDy, input_buffer, coefficient_logfile_directory);
 
 	// woot!
 	return 0;
@@ -149,54 +166,14 @@ setup (int argc, char **argv)
 void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &telemetry, SID &SINDy, Buffer &input_buffer, std::string logfile_directory)
 {
 	using namespace mavsdk;
-
-	// Keep track of number of times the autopilot has been armed to separate flight tests into different files
-	int flights_since_reboot = 0;
 	
 	// Main event loop
 	while(1)
 	{
-		
-		switch(system_state)
-		{
-			case GROUND_IDLE_STATE:
-				// If autopilot mode is armed, switch to FLIGHT_LOG_STATE
-				if(telemetry.armed())
-				{
-					system_state = FLIGHT_LOG_STATE;
-					SINDy.logfile_directory = logfile_directory;
-					SINDy.flight_number++;
-					SINDy.start();
-					printf("Autopilot armed. Starting system identification for flight number %d\n", SINDy.flight_number);
-				}
-			break;
-
-			case FLIGHT_LOG_STATE:
-				// If autopilot is disarmed, switch to GROUND_IDLE_STATE
-				if(!telemetry.armed())
-				{
-					system_state = GROUND_IDLE_STATE;
-					printf("Autopilot disarmed. Stopped logging\n");
-					SINDy.stop();
-				}
-			break;
-
-			case FLIGHT_LOG_SID_STATE:
-				//TODO implement switch to passive system identification state
-			break;
-
-			case FLIGHT_LOG_SID_CMD_STATE:
-				//TODO implement switch to active system identification state
-			break;
-		}
-		
+		SINDy.start();
+		// Top level state machine will go here
 	}
 	printf("\n");
-
-
-	// --------------------------------------------------------------------------
-	//   END OF COMMANDS
-	// --------------------------------------------------------------------------
 
 	return;
 
@@ -206,7 +183,8 @@ void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &tele
 // ------------------------------------------------------------------------------
 //   Parse Command Line
 // ------------------------------------------------------------------------------
-void parse_commandline(int argc, char **argv, std::string &autopilot_path, std::string &logfile_directory, int &buffer_length, buffer_mode &mode, float &stlsq_threshold, float &ridge_regression_penalty)
+void parse_commandline(int argc, char **argv, std::string &autopilot_path, std::string &coefficient_logfile_path, int &buffer_length, buffer_mode &mode,
+						float &stlsq_threshold, float &ridge_regression_penalty, bool &debug, std::string &debug_logfile_path)
 {
 	using namespace std;
 	// string for command line usage
@@ -215,6 +193,7 @@ void parse_commandline(int argc, char **argv, std::string &autopilot_path, std::
 	char *val;
 	// Read input arguments
 	for (int i = 1; i < argc; i++) { // argv[0] is "mavlink"
+		printf("%s\n",argv[0]);
 		val = argv[i];
 		printf("%s\n",val);
 		// Help
@@ -234,11 +213,11 @@ void parse_commandline(int argc, char **argv, std::string &autopilot_path, std::
 			}
 		}
 
-		// logfile
+		// coefficient logfile path
 		if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--log") == 0) {
 			if (argc > i + 1) {
 				i++;
-				logfile_directory = (argv[i]);
+				coefficient_logfile_path = (argv[i]);
 			} else {
 				std::cout << commandline_usage;
 				throw EXIT_FAILURE;
@@ -268,7 +247,7 @@ void parse_commandline(int argc, char **argv, std::string &autopilot_path, std::
 					mode = buffer_mode::time_mode;
 				}
 				else {
-					std::cout << "Invalid argument, options are length or time\n";
+					std::cout << "Invalid argument for -m option, use length or time\n";
 					throw EXIT_FAILURE;
 				}
 			} else {
@@ -293,6 +272,18 @@ void parse_commandline(int argc, char **argv, std::string &autopilot_path, std::
 			if (argc > i + 1) {
 				i++;
 				ridge_regression_penalty = atoi(argv[i]);
+			} else {
+				//std::cout << commandline_usage;
+				throw EXIT_FAILURE;
+			}
+		}
+
+		// debug option
+		if (strcmp(argv[i], "--debug") == 0) {
+			debug = true;
+			if (argc > i + 1) {
+				i++;
+				debug_logfile_path = argv[i];
 			} else {
 				//std::cout << commandline_usage;
 				throw EXIT_FAILURE;

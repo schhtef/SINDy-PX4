@@ -26,14 +26,15 @@ SID()
 }
 
 SID::
-SID(Buffer *input_buffer_, std::chrono::_V2::system_clock::time_point program_epoch, float stlsq_threshold, float ridge_regression_penalty)
+SID(Buffer *input_buffer_, std::chrono::_V2::system_clock::time_point program_epoch, float stlsq_threshold, float ridge_regression_penalty, std::string coefficient_logfile_path_, bool debug_)
 {
     input_buffer = input_buffer_;
 	STLSQ_threshold = stlsq_threshold;
 	lambda = ridge_regression_penalty;
-	logfile_directory = "../logs/";
+	coefficient_logfile_path = coefficient_logfile_path_;
 	flight_number = 0;
 	epoch = program_epoch;
+	debug = debug_;
 }
 
 SID::
@@ -54,7 +55,7 @@ sindy_compute()
 	cout << "Performing sindy\n";
     compute_status = true;
 	arma::running_stat<double> stats;
-	initialize_logfile(logfile_directory + "Flight Number: " + to_string(flight_number) + ".csv"); //Write header to coefficient logfile
+	initialize_logfile(coefficient_logfile_path); //Write header to coefficient logfile
     while ( ! time_to_exit )
 	{
 		auto t1 = std::chrono::high_resolution_clock::now();
@@ -87,24 +88,23 @@ sindy_compute()
 		std::chrono::microseconds coefficient_sample_time = std::chrono::duration_cast<std::chrono::microseconds>(t6 - epoch);
 
 		stats(SINDy_time.count());
-		//std::cout << "Buffer Clear: " << clear_buffer_time.count() << "ms\n";
-		//std::cout << "Interpolation: " << interpolation_time.count() << "us\n";
-		//std::cout << "Candidate Functions: " << candidate_computation_time.count() << "us\n";
-		//std::cout << "Derivative Parse: " << derivative_time.count() << "us\n";
-		//std::cout << "SINDy: " << SINDy_time.count() << "us\n";
-		//std::cout << "SINDy Average: " << stats.mean() << "us\n";
-		//std::cout << "SINDy: " << stats.stddev() << "us\n";
-		//std::cout << "Buffer Size: " << states.num_samples << " samples\n";
 
-		coefficients.print();
+		if(debug){
+			std::cout << "Buffer Clear: " << clear_buffer_time.count() << "ms\n";
+			std::cout << "Interpolation: " << interpolation_time.count() << "us\n";
+			std::cout << "Candidate Functions: " << candidate_computation_time.count() << "us\n";
+			std::cout << "Derivative Parse: " << derivative_time.count() << "us\n";
+			std::cout << "SINDy: " << SINDy_time.count() << "us\n";
+			std::cout << "SINDy Average: " << stats.mean() << "us\n";
+			std::cout << "SINDy: " << stats.stddev() << "us\n";
+			std::cout << "Buffer Size: " << states.num_samples << " samples\n";
+			coefficients.print();
+		}
 
 		//Log Results
-		
-		// might cause a race condition where the SINDy thread checks disarmed just before the main thread
-		// sets the disarmed flag. Worst case scenario the SINDy thread logs one more buffer
 
 		//log_buffer_to_csv(interpolated_telemetry, filename);
-		log_coeff(coefficients, logfile_directory + "Flight Number: " + to_string(flight_number) + ".csv", coefficient_sample_time);
+		log_coeff(coefficients, coefficient_logfile_path, coefficient_sample_time);
 		//coefficients.save(arma::hdf5_name(logfile_directory + "Flight Number: " + to_string(flight_number)+".hdf5", "coefficients", arma::hdf5_opts::append));
 	}
 	compute_status = false;
@@ -142,24 +142,6 @@ initialize_logfile(std::string filename)
 		{
 			myfile << *candidate_iterator << "-" << *state_iterator << ",";
 		}
-	}
-	myfile << "\n";
-	myfile.close();
-}
-
-void SID::
-log_coeff(arma::mat matrix, std::string filename, std::chrono::microseconds sample_time)
-{
-	using namespace std;
-	ofstream myfile;
-    myfile.open (filename, ios_base::app);
-	arma::rowvec vectorized_matrix = vectorise(matrix, 1); //row-wise vectorization of the coefficient matrix for writing to csv
-	
-	arma::rowvec::iterator coefficient_iterator = vectorized_matrix.begin();
-	myfile << sample_time.count() << ",";
-	for(; coefficient_iterator != vectorized_matrix.end(); ++coefficient_iterator)
-	{
-		myfile << (*coefficient_iterator) << ",";
 	}
 	myfile << "\n";
 	myfile.close();

@@ -7,8 +7,8 @@
  *
  */
 
-#ifndef logger_H_
-#define logger_H_
+#ifndef LOGGING_H_
+#define LOGGING_H_
 
 #define NUMBER_OF_BUFFERS 5
 // ------------------------------------------------------------------------------
@@ -18,10 +18,10 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-#include "interpolate.h"
+#include <mavsdk/log_callback.h>
+#include <armadillo>
 
-using namespace std;
-
-void log_buffer_to_csv(Data_Buffer telemetry, string filename);
-
+void log_buffer_to_csv(Data_Buffer telemetry, std::string filename);
+void log_mavlink_info(mavsdk::log::Level level, const std::string& message, const std::string &filename);
+void log_coeff(arma::mat matrix, std::string filename, std::chrono::microseconds sample_time);
 #endif

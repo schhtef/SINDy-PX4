@@ -8,6 +8,7 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(Catch2)
+find_package(Boost REQUIRED)
 
 find_package(Armadillo REQUIRED)
 include_directories(${ARMADILLO_INCLUDE_DIRS})

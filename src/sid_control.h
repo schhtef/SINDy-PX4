@@ -17,8 +17,10 @@
 #include <mavsdk/mavsdk.h> // general mavlink header
 #include <mavsdk/plugins/telemetry/telemetry.h> // telemetry plugin
 #include <mavsdk/plugins/info/info.h> // system info plugin
+#include <mavsdk/log_callback.h> // mavlink logging
 #include "buffer.h"
 #include "system_identification.h"
+#include "logging.h"
 
 // Top state machine logic states
 enum system_states
@@ -34,7 +36,8 @@ int main(int argc, char **argv);
 int setup(int argc, char **argv);
 //Runtime command handling
 void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &telemetry, SID &SINDy, Buffer &input_buffer, std::string logfile_directory);
-void parse_commandline(int argc, char **argv, std::string &autopilot_path, std::string &logfile_directory, int &buffer_length, buffer_mode &mode, float &stlsq_threshold, float &ridge_regression_penalty);
+void parse_commandline(int argc, char **argv, std::string &autopilot_path, std::string &logfile_directory, int &buffer_length, buffer_mode &mode, 
+						float &stlsq_threshold, float &ridge_regression_penalty, bool &debug, std::string &debug_logfile_path);
 //Interrupt handling
 SID *SINDy_quit;
 int system_state = GROUND_IDLE_STATE;

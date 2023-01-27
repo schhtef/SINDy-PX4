@@ -7,11 +7,11 @@
  *
  */
 
-#include "logger.h"
+#include "logging.h"
 
-void log_buffer_to_csv(Data_Buffer telemetry, string filename)
-{
+void log_buffer_to_csv(Data_Buffer telemetry, std::string filename){
 /*
+    using namespace std;
     //create an array of strings, size max length
     //iterate through buffers, appending element + ","
     //append " "+ "," if we have reached the end
@@ -70,6 +70,31 @@ void log_buffer_to_csv(Data_Buffer telemetry, string filename)
         row = "";
     }
     myfile.close();
-    */
     return;
+*/
+}
+
+void log_mavlink_info(mavsdk::log::Level level, const std::string& message, const std::string &filename){
+	using namespace std;
+	ofstream myfile;
+    myfile.open (filename, ios_base::app);
+	myfile << static_cast<int>(level) << ',' << message << '\n';
+	myfile.close();
+}
+
+void log_coeff(arma::mat matrix, std::string filename, std::chrono::microseconds sample_time)
+{
+	using namespace std;
+	ofstream myfile;
+    myfile.open (filename, ios_base::app);
+	arma::rowvec vectorized_matrix = vectorise(matrix, 1); //row-wise vectorization of the coefficient matrix for writing to csv
+	
+	arma::rowvec::iterator coefficient_iterator = vectorized_matrix.begin();
+	myfile << sample_time.count() << ",";
+	for(; coefficient_iterator != vectorized_matrix.end(); ++coefficient_iterator)
+	{
+		myfile << (*coefficient_iterator) << ",";
+	}
+	myfile << "\n";
+	myfile.close();
 }
