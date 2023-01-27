@@ -21,6 +21,7 @@ add_executable(SINDy_tests
     ${PROJECT_SOURCE_DIR}/src/system_identification.cpp
     ${PROJECT_SOURCE_DIR}/src/buffer.cpp
     ${PROJECT_SOURCE_DIR}/src/interpolate.cpp
+    ${PROJECT_SOURCE_DIR}/src/logging.cpp
 )
 
 #Link the required libraries, including the Catch2 with Main library

@@ -124,7 +124,7 @@ struct Data_Buffer {
 };
 
 // Enumerate the modes which the buffer may operate in
-enum buffer_mode {
+enum BufferMode {
     time_mode,
     length_mode
 };
@@ -141,7 +141,7 @@ class Buffer
     int buffer_length;
     int buffer_counter = 0;
     int clear_time;
-    buffer_mode mode;
+    BufferMode mode;
 
     Data_Buffer buffer;
     std::mutex mtx;
@@ -150,7 +150,7 @@ class Buffer
 
 public:
     Buffer();
-    Buffer(int buffer_length_, buffer_mode mode_);
+    Buffer(int buffer_length_, BufferMode mode_);
     ~Buffer();
 
     void insert(mavsdk::Telemetry::Odometry, uint64_t timestamp);

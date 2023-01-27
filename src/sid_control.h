@@ -14,6 +14,7 @@
 #include <chrono>
 #include<utility>
 
+#include "toml.hpp"
 #include <mavsdk/mavsdk.h> // general mavlink header
 #include <mavsdk/plugins/telemetry/telemetry.h> // telemetry plugin
 #include <mavsdk/plugins/info/info.h> // system info plugin
@@ -31,13 +32,37 @@ enum system_states
 	FLIGHT_LOG_SID_CMD_STATE = 3 // Aircraft is armed and ready for flight, system identification with commands will occur
 };
 
+// Struct to contain program runtime options
+struct ProgramOptions{
+	std::string autopilot_path;
+	std::string coefficient_logfile_directory;
+	std::string debug_logfile_path;
+	BufferMode buffer_mode;
+	int buffer_length;
+	float ridge_regression_penalty;
+	float stlsq_threshold;
+	bool debug;
+
+	void print_options()
+	{
+		std::cout << "autopilot device path: " << autopilot_path << "\n";
+		std::cout << "coefficient log path: " <<  coefficient_logfile_directory << "\n";
+		std::cout << "debug log path: " <<  debug_logfile_path << "\n";
+		std::cout << "buffer mode: " <<  buffer_mode << "\n";
+		std::cout << "buffer length: " <<  buffer_length << "\n";
+		std::cout << "ridge regression penalty: " <<  ridge_regression_penalty << "\n";
+		std::cout << "stlsq threshold: " <<  stlsq_threshold << "\n";
+		std::cout << "debug to console: " <<  debug << "\n";
+	}
+};
+
 int main(int argc, char **argv);
 //Device connection and configuration
 int setup(int argc, char **argv);
 //Runtime command handling
 void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &telemetry, SID &SINDy, Buffer &input_buffer, std::string logfile_directory);
-void parse_commandline(int argc, char **argv, std::string &autopilot_path, std::string &logfile_directory, int &buffer_length, buffer_mode &mode, 
-						float &stlsq_threshold, float &ridge_regression_penalty, bool &debug, std::string &debug_logfile_path);
+void parse_commandline(int argc, char **argv, std::string &config_file_path);
+void parse_toml_config(const std::string config_file_path, ProgramOptions &options);
 //Interrupt handling
 SID *SINDy_quit;
 int system_state = GROUND_IDLE_STATE;

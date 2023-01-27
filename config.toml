@@ -1,0 +1,10 @@
+title = "SINDy_offboard runtime configuration"
+
+autopilot_path = "udp://:14540"
+sindy_coefficient_logfile_path = "logs/coefficients.csv"
+debug_info_logfile_path = "logs/mavlink_debug_log.csv"
+buffer_mode = "length"
+buffer_length = 100
+ridge_regression_penalty = 0.1
+stlsq_threshold = 0.1
+debug_to_console = true

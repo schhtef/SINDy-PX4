@@ -10,30 +10,28 @@
 int setup(int argc, char **argv)
 {
 	using namespace std;
-	// Set program defaults
-	string autopilot_path = "udp://:14540";
-	string coefficient_logfile_directory = "../logs/coefficients.csv";
-	string debug_logfile_path = "../logs/mavlink_debug_log.csv";
+	//Default configuration path
+	string config_file_path = "config.toml";
 
-	buffer_mode mode = buffer_mode::length_mode;
-	int buffer_length = 100;
-	float ridge_regression_penalty = 0.1;
-	float stlsq_threshold = 0.1;
-	bool debug = false;
-
+	//Initialize struct containing runtime options
+	ProgramOptions options;
+	
 	// Parse command line arguments
-	parse_commandline(argc, argv, autopilot_path, coefficient_logfile_directory, buffer_length, mode, ridge_regression_penalty,
-					  stlsq_threshold, debug, debug_logfile_path);
+	parse_commandline(argc, argv, config_file_path);
+	//Parse config file
+	parse_toml_config(config_file_path, options);
+
+	//Print the parsed options to console
+	options.print_options();
 
 	// set a base time at which the telemetry items are timestamped
 	std::chrono::_V2::system_clock::time_point program_epoch = std::chrono::high_resolution_clock::now();
 
 	using namespace mavsdk;
-
 	// Instantiate MAVSDK Object
 	Mavsdk mavsdk;
 	// Find autopilot system using UDP or Serial device path
-	ConnectionResult connection_result = mavsdk.add_any_connection(autopilot_path);
+	ConnectionResult connection_result = mavsdk.add_any_connection(options.autopilot_path);
 
 	// make sure we have connected successfully to the autopilot
 	if (connection_result != ConnectionResult::Success)
@@ -60,7 +58,7 @@ int setup(int argc, char **argv)
 	 * associated with a Mavlink type which is passed into the SID
 	 *
 	 */
-	Buffer input_buffer(buffer_length, mode);
+	Buffer input_buffer(options.buffer_length, options.buffer_mode);
 
 	/*
 	 * Instantiate a system identification object
@@ -68,7 +66,7 @@ int setup(int argc, char **argv)
 	 * This object takes data from the input buffer and implements the SINDy algorithm on it
 	 *
 	 */
-	SID SINDy(&input_buffer, program_epoch, stlsq_threshold, ridge_regression_penalty, coefficient_logfile_directory, debug);
+	SID SINDy(&input_buffer, program_epoch, options.stlsq_threshold, options.ridge_regression_penalty, options.coefficient_logfile_directory, options.debug);
 
 	/*
 	 * Setup interrupt signal handler
@@ -114,12 +112,12 @@ int setup(int argc, char **argv)
 			  << "  product_name: " << systemProduct.product_id << '\n';
 
 	// Subscribe to mavlink logs
-	mavsdk::log::subscribe([debug_logfile_path](mavsdk::log::Level level,	// message severity level
+	mavsdk::log::subscribe([&options](mavsdk::log::Level level,	// message severity level
 												const std::string &message, // message text
 												const std::string &file,	// source file from which the message was sent
 												int line) {					// line number in the source file
-		// process the log message in a way you like
-		log_mavlink_info(level, message, debug_logfile_path);
+		// log the message
+		log_mavlink_info(level, message, options.debug_logfile_path);
 
 		// returning true from the callback disables printing the message to stdout
 		return level < mavsdk::log::Level::Warn;
@@ -152,7 +150,7 @@ int setup(int argc, char **argv)
 		input_buffer.insert(actuator, sample_time); });
 
 	// Run the main event loop
-	flight_loop(system, telemetry, SINDy, input_buffer, coefficient_logfile_directory);
+	flight_loop(system, telemetry, SINDy, input_buffer, options.coefficient_logfile_directory);
 
 	// woot!
 	return 0;
@@ -177,16 +175,41 @@ void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &tele
 	return;
 }
 
+// Populate the program options struct members with the data loaded from the config file
+void parse_toml_config(const std::string config_file_path, ProgramOptions &options)
+{
+	using namespace std;
+	auto data = toml::parse(config_file_path);
+
+	// Set program runtime parameters from toml configuration file
+	options.autopilot_path = toml::find_or<string>(data, "autopilot_path", "udp://:14540");
+	options.coefficient_logfile_directory = toml::find_or<string>(data, "sindy_coefficient_logfile_path", "logs/coefficients.csv");
+	options.debug_logfile_path = toml::find_or<string>(data, "debug_info_logfile_path", "../logs/mavlink_debug_log.csv");
+
+	options.buffer_length = toml::find_or<int>(data,"buffer_Length`",100);
+	options.ridge_regression_penalty = toml::find_or<float>(data, "ridge_regression_penalty", 0.1);
+	options.stlsq_threshold = toml::find_or<float>(data, "stlsq_threshold", 0.1);
+	options.debug = toml::find_or<bool>(data, "debug_to_console", false);
+
+	string buffer_mode = toml::find_or<string>(data, "buffer_mode", "Length"); 
+	if(buffer_mode == "length")
+	{
+		options.buffer_mode = length_mode;
+	}
+	else if(buffer_mode == "time")
+	{
+		options.buffer_mode = time_mode;
+	}
+}
+
 // ------------------------------------------------------------------------------
 //   Parse Command Line
 // ------------------------------------------------------------------------------
-void parse_commandline(int argc, char **argv, std::string &autopilot_path, std::string &coefficient_logfile_path, int &buffer_length, buffer_mode &mode,
-					   float &stlsq_threshold, float &ridge_regression_penalty, bool &debug, std::string &debug_logfile_path)
+void parse_commandline(int argc, char **argv, std::string &config_file_directory)
 {
 	using namespace std;
 	// string for command line usage
-	string commandline_usage = "usage: SID_offboard\nOptions:\n-p <Device Path>\n\tudp://[host][:port]\n\ttcp://[host][:port]\n\tserial://[path][:baudrate]\n";
-	commandline_usage += "-l <logfile directory>\n-b <buffer length>\n-m <buffer mode>\n\ttime or length\n-t <STLSQ threshold>\n-r <Ridge regression penalty>\n-d <debug output>\n";
+
 	char *val;
 	// Read input arguments
 	for (int i = 1; i < argc; i++)
@@ -197,132 +220,23 @@ void parse_commandline(int argc, char **argv, std::string &autopilot_path, std::
 		// Help
 		if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
 		{
-			std::cout << commandline_usage;
 			throw EXIT_FAILURE;
 		}
 
-		// devicepath
+		// config file path
 		if (strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--devpath") == 0)
 		{
 			if (argc > i + 1)
 			{
 				i++;
-				autopilot_path = (argv[i]);
+				config_file_directory = (argv[i]);
 			}
 			else
 			{
-				std::cout << commandline_usage;
-				throw EXIT_FAILURE;
-			}
-		}
-
-		// coefficient logfile path
-		if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--log") == 0)
-		{
-			if (argc > i + 1)
-			{
-				i++;
-				coefficient_logfile_path = (argv[i]);
-			}
-			else
-			{
-				std::cout << commandline_usage;
-				throw EXIT_FAILURE;
-			}
-		}
-
-		// buffer length
-		if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--buffer") == 0)
-		{
-			if (argc > i + 1)
-			{
-				i++;
-				buffer_length = atoi(argv[i]);
-			}
-			else
-			{
-				std::cout << commandline_usage;
-				throw EXIT_FAILURE;
-			}
-		}
-
-		// buffer mode
-		if (strcmp(argv[i], "-m") == 0 || strcmp(argv[i], "--mode") == 0)
-		{
-			if (argc > i + 1)
-			{
-				i++;
-				string buffer_mode_string = (argv[i]);
-				if (buffer_mode_string == "length")
-				{
-					mode = buffer_mode::length_mode;
-				}
-				else if (buffer_mode_string == "time")
-				{
-					mode = buffer_mode::time_mode;
-				}
-				else
-				{
-					std::cout << "Invalid argument for -m option, use length or time\n";
-					throw EXIT_FAILURE;
-				}
-			}
-			else
-			{
-				std::cout << commandline_usage;
-				throw EXIT_FAILURE;
-			}
-		}
-
-		// STLSQ thresholding parameter
-		if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--threshold") == 0)
-		{
-			if (argc > i + 1)
-			{
-				i++;
-				stlsq_threshold = atoi(argv[i]);
-			}
-			else
-			{
-				// std::cout << commandline_usage;
-				throw EXIT_FAILURE;
-			}
-		}
-
-		// ridge regression penalty
-		if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--lambda") == 0)
-		{
-			if (argc > i + 1)
-			{
-				i++;
-				ridge_regression_penalty = atoi(argv[i]);
-			}
-			else
-			{
-				// std::cout << commandline_usage;
-				throw EXIT_FAILURE;
-			}
-		}
-
-		// debug option
-		if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--debug") == 0)
-		{
-			debug = true;
-			if (argc > i + 1)
-			{
-				i++;
-				debug_logfile_path = argv[i];
-			}
-			else
-			{
-				// std::cout << commandline_usage;
 				throw EXIT_FAILURE;
 			}
 		}
 	}
-	// end: for each input argument
-
-	// Done!
 	return;
 }
 

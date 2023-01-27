@@ -77,7 +77,11 @@
         "stop_token": "cpp",
         "cfenv": "cpp",
         "regex": "cpp",
-        "future": "cpp"
+        "future": "cpp",
+        "csetjmp": "cpp",
+        "*.ipp": "cpp",
+        "codecvt": "cpp",
+        "valarray": "cpp"
     },
     "cmake.configureOnOpen": false,
     "cmake.sourceDirectory": "${workspaceFolder}/src"

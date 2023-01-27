@@ -2,10 +2,15 @@
 Companion computer software for UAV system identification using the [Sparse Identification of Nonlinear Dynamics](https://www.pnas.org/doi/10.1073/pnas.1517384113) (SINDy) method. This project was submitted as my honors thesis in Computer Engineering at the University of Victoria. The thesis can be found in `docs/` for more information.
 
 ## Dependencies
-Run the provision_vm.sh script in SINDY-PX4/tools to install the necessary packages and dependencies. Running this should install everything you need for development, SIL, and HIL simulations.
+SINDy-PX4 has two primary dependencies, armadillo and mavsdk. It assumes at least c++17.
 
 ## Building
-This project uses CMAKE as a build manager. You must generate the build files by creating a build directory `mkdir build`, navigating to `/build` then running `cmake ../`
+This project uses CMake as a build manager. You must generate the build files by creating a build directory `mkdir build`, navigating to `/build` then running `cmake ../ <options>`. No options will default to the SIL build.
+
+### CMake Options
+There are three main options you'll probably care about. These are SIL_BUILD_TEST, SIL_BUILD, and CMAKE_BUILD_TYPE. These are specified when generating build files by passing the `-D` flag after `cmake ../`. For example, building the for debugging would look like `cmake ../ -DCMAKE_BUILD_TYPE=debug`. 
+
+Setting either SIL_BUILD_TEST=true allows you to build and run unit test, while SIL_BUILD=true will allow you to build the standard SIL model. There are currently plans to specify a HIL_BUILD option once a toolchain for this project is created. 
 
 With the buildfiles generated, run `cmake --build .` while in `/build` to generate the executable.
 
@@ -26,28 +31,8 @@ To enable/disable compiling a suite of test cases, change the `SIL_BUILD_TEST` o
 5. Start SID_Control by running `./build/SID_control -u 127.0.0.1 -p 14540 -s 100` from the PX4-SID root directory
 
 ## CMD Line Options
-For simulation with gazebo, the five important arguments are the UDP port, IP address, buffer length, buffer mode, and logfile location.
+Most runtime arguments are parsed from a .toml file. the only cmd line argument needed is this configuration file's location. It defaults to `config.toml`.
 
-### UDP IP
-`-u <udp ip address>`
+### Config File Location
+`-c <file location>`
 
-IP address for the UDP connection to a virtual or physical PX4. For simulation on a local machine, use 127.0.0.1
-### UDP Port Number
-`-p <udp port number>`
-
-Port number for the UDP connection to a virtual or physical PX4. Use 14540 as this is what PX4 uses for auxiliary communication.
-
-### SINDy Buffer Length
-`-s <buffer length>`
-
-An integer which denotes how long the input buffer for SINDy is.
-
-### Buffer Mode
-`-m <file location>`
-
-Specifies whether to fill the shared buffer with -s number of items or -s number of seconds
-
-### Log File Location
-`-l <file location>`
-
-Specifies the file location for the logged model coefficients. It currently names the files automatically based on the flight number. 
