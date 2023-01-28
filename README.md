@@ -8,6 +8,7 @@ Clone the SINDy-PX4 repo using `git clone --recurse-submodules https://github.co
 Install the following packages onto your machine using apt-get.
 
 `sudo apt-get install cmake`
+
 `sudo apt-get install libarmadillo-dev`
 
 Mavsdk must also be installed, however it is not distributed using the default ubuntu sources. Download the latest libmavsdk release for amd64 from the [Mavsdk github](https://github.com/mavlink/MAVSDK/releases). Once downloaded, navigate to the file and run
@@ -32,14 +33,10 @@ To enable/disable compiling a suite of test cases, change the `SIL_BUILD_TEST` o
 2. Clone the PX4-Autopilot repository and complete installation of dependencies by following this [guide](https://dev.px4.io/v1.10_noredirect/en/simulation/gazebo.html)
 3. Startup the gazebo simulation by running `make px4_sitl gazebo` within the root directory
 4. Run the QGroundControl.appimage
-5. Build the project by running `make SID_control_SIL` to build using the c++20 compiler
-6. Start SID_Control_SIL by running `./build/SID_control_SIL -u 127.0.0.1 -p 14540 -s 100 -m length -l logs/` from the PX4-SID root directory to run with a buffer size of 100 items and a logfile in the logs/ folder.
 
 ## HIL Run Instructions
 1. Follow steps 1-4 of the SIL instructions.
 2. Connect PX4 to the raspberry pi using a UART.
-5. Build using `make SID_control_HIL` in order to use the arm-linux-gnueabihf-g++ compiler for the raspberry pi.
-5. Start SID_Control by running `./build/SID_control -u 127.0.0.1 -p 14540 -s 100` from the PX4-SID root directory
 
 ## CMD Line Options
 Most runtime arguments are parsed from a .toml file. the only cmd line argument needed is this configuration file's location. It defaults to `config.toml`.

@@ -56,57 +56,55 @@ sindy_compute()
     compute_status = true;
 	arma::running_stat<double> stats;
 	initialize_logfile(coefficient_logfile_path); //Write header to coefficient logfile
-    while ( ! time_to_exit )
-	{
-		auto t1 = std::chrono::high_resolution_clock::now();
-        Data_Buffer data = input_buffer->clear();
-		//std::cout << "Cleared Buffer\n";
-		auto t2 = std::chrono::high_resolution_clock::now();
-		Vehicle_States states = linear_interpolate(data, 200); // Resample input buffer and compute desired states
-		auto t3 = std::chrono::high_resolution_clock::now();
-		//std::cout << "Interpolated Buffer\n";
-		arma::mat candidate_functions = compute_candidate_functions(states); //Generate Candidate Function
-		auto t4 = std::chrono::high_resolution_clock::now();
-		//std::cout << "Computed Candidates\n";
-		arma::mat derivatives = get_derivatives(states); //Get state derivatives for SINDy
-		auto t5 = std::chrono::high_resolution_clock::now();
-		//std::cout << "Computed Derivatives\n";
-		arma::mat coefficients = STLSQ(derivatives, candidate_functions, STLSQ_threshold, lambda); //Run STLSQ
-		auto t6 = std::chrono::high_resolution_clock::now();
-		//std::cout << "Completed STLSQ\n";
 
-		assert(states.num_samples == candidate_functions.n_cols); // Check that number of samples are preserved after computing candidate functions
-		assert(candidate_functions.n_cols == derivatives.n_cols); // Check that number of samples in candidate functions and derivatives are equal
-		assert(candidate_functions.n_rows == coefficients.n_rows); // Check that number of features is equal in the candidate functions and solved coefficients
+	auto t1 = std::chrono::high_resolution_clock::now();
+	Data_Buffer data = input_buffer->clear();
+	//std::cout << "Cleared Buffer\n";
+	auto t2 = std::chrono::high_resolution_clock::now();
+	Vehicle_States states = linear_interpolate(data, 200); // Resample input buffer and compute desired states
+	auto t3 = std::chrono::high_resolution_clock::now();
+	//std::cout << "Interpolated Buffer\n";
+	arma::mat candidate_functions = compute_candidate_functions(states); //Generate Candidate Function
+	auto t4 = std::chrono::high_resolution_clock::now();
+	//std::cout << "Computed Candidates\n";
+	arma::mat derivatives = get_derivatives(states); //Get state derivatives for SINDy
+	auto t5 = std::chrono::high_resolution_clock::now();
+	//std::cout << "Computed Derivatives\n";
+	arma::mat coefficients = STLSQ(derivatives, candidate_functions, STLSQ_threshold, lambda); //Run STLSQ
+	auto t6 = std::chrono::high_resolution_clock::now();
+	//std::cout << "Completed STLSQ\n";
 
-    	auto clear_buffer_time = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-    	auto interpolation_time = std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2);
-		auto candidate_computation_time = std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3);
-		auto derivative_time = std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4);
-		auto SINDy_time = std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5);
+	assert(states.num_samples == candidate_functions.n_cols); // Check that number of samples are preserved after computing candidate functions
+	assert(candidate_functions.n_cols == derivatives.n_cols); // Check that number of samples in candidate functions and derivatives are equal
+	assert(candidate_functions.n_rows == coefficients.n_rows); // Check that number of features is equal in the candidate functions and solved coefficients
 
-		std::chrono::microseconds coefficient_sample_time = std::chrono::duration_cast<std::chrono::microseconds>(t6 - epoch);
+	auto clear_buffer_time = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+	auto interpolation_time = std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2);
+	auto candidate_computation_time = std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3);
+	auto derivative_time = std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4);
+	auto SINDy_time = std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5);
 
-		stats(SINDy_time.count());
+	std::chrono::microseconds coefficient_sample_time = std::chrono::duration_cast<std::chrono::microseconds>(t6 - epoch);
 
-		if(debug){
-			std::cout << "Buffer Clear: " << clear_buffer_time.count() << "ms\n";
-			std::cout << "Interpolation: " << interpolation_time.count() << "us\n";
-			std::cout << "Candidate Functions: " << candidate_computation_time.count() << "us\n";
-			std::cout << "Derivative Parse: " << derivative_time.count() << "us\n";
-			std::cout << "SINDy: " << SINDy_time.count() << "us\n";
-			std::cout << "SINDy Average: " << stats.mean() << "us\n";
-			std::cout << "SINDy: " << stats.stddev() << "us\n";
-			std::cout << "Buffer Size: " << states.num_samples << " samples\n";
-			coefficients.print();
-		}
+	stats(SINDy_time.count());
 
-		//Log Results
-
-		//log_buffer_to_csv(interpolated_telemetry, filename);
-		log_coeff(coefficients, coefficient_logfile_path, coefficient_sample_time);
-		//coefficients.save(arma::hdf5_name(logfile_directory + "Flight Number: " + to_string(flight_number)+".hdf5", "coefficients", arma::hdf5_opts::append));
+	if(debug){
+		std::cout << "Buffer Clear: " << clear_buffer_time.count() << "ms\n";
+		std::cout << "Interpolation: " << interpolation_time.count() << "us\n";
+		std::cout << "Candidate Functions: " << candidate_computation_time.count() << "us\n";
+		std::cout << "Derivative Parse: " << derivative_time.count() << "us\n";
+		std::cout << "SINDy: " << SINDy_time.count() << "us\n";
+		std::cout << "SINDy Average: " << stats.mean() << "us\n";
+		std::cout << "SINDy: " << stats.stddev() << "us\n";
+		std::cout << "Buffer Size: " << states.num_samples << " samples\n";
+		coefficients.print();
 	}
+
+	//Log Results
+
+	//log_buffer_to_csv(interpolated_telemetry, filename);
+	log_coeff(coefficients, coefficient_logfile_path, coefficient_sample_time);
+	//coefficients.save(arma::hdf5_name(logfile_directory + "Flight Number: " + to_string(flight_number)+".hdf5", "coefficients", arma::hdf5_opts::append));
 	compute_status = false;
 	return;
 }
@@ -354,7 +352,7 @@ stop()
 	time_to_exit = true;
 
 	// wait for exit
-	//compute_thread.join();
+	compute_thread.join();
 
 	// now the read and write threads are closed
 	printf("\n");
