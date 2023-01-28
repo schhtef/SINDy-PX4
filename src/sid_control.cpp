@@ -76,7 +76,6 @@ int setup(int argc, char **argv)
 	 * The handler in this example needs references to the above objects.
 	 *
 	 */
-
 	SINDy_quit = &SINDy;
 	signal(SIGINT, quit_handler);
 
@@ -165,13 +164,17 @@ void flight_loop(std::shared_ptr<mavsdk::System> system, mavsdk::Telemetry &tele
 	using namespace mavsdk;
 
 	// Main event loop
-	while (1)
-	{
-		SINDy.start();
-		// Top level state machine will go here
-	}
-	printf("\n");
+	// Top level state machine will go here
+	//while(1){}
+	SINDy.start();
+	SINDy.stop(); //Waits for thread to complete
 
+	//This flight loop will contain the top level state machine to determine when to start a system identification
+	//Starting system identification in its own thread is done because there will likely be other functions
+	//Executing simultaneously, such as the supervisor, which will decide when to dispatch an identification
+	// Nominal Flight Mode (MPC control/Supervisor)----Supervisor detects anomaly---->System identification mode(MPC Control/Perturbation/SINDy)
+	// ------SINDy completes and updates model----->Nominal flight mode
+	// Extra modes will probably include a disarmed ground mode, manual system identification mode, and flying but disarmed state
 	return;
 }
 
